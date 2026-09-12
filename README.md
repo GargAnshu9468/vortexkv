@@ -20,7 +20,7 @@
   - Configurable `maxclients` connection ceiling (default 10,000).
 - 🔄 **ACID Atomic Transactions**: Full support for `MULTI`, `EXEC`, and `DISCARD`.
 - 🪐 **2D/3D Force-Directed Keyspace Galaxy**: Interactive canvas visualizer in the browser grouping keys by namespace and data types with neon particle flows.
-- 🧠 **Built-in AI Vector Primitives**: First-class cosine and euclidean nearest-neighbor vector search (`VADD`, `VSEARCH`, `VSIM`) right inside the KV store.
+- 🧠 **Native HNSW AI Vector Graph Indexing**: Million-scale sub-millisecond approximate nearest-neighbor search (`VADD`, `VSEARCH`, `VSIM`, `VINFO`, `VDEL`) with multi-layer skip-graphs ($O(\log N)$) and cosine, euclidean, and dot product metrics.
 - ⏱️ **Zero-Alloc Active & Passive TTL Expiration**: Sub-millisecond timing wheel and probabilistic active sampling.
 - 📦 **Zero-Concern Production Packaging**: Includes multi-stage `Dockerfile`, `systemd` service unit (`vortexkv.service`), and production template `vortex.conf`.
 - 💾 **Append-Only File (AOF) Durability**: Complete durability with configurable fsync policies (`always`, `everysec`, `no`).

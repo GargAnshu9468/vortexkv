@@ -115,9 +115,9 @@ Standard Redis 6+ wire commands:
 
 ---
 
-## 🧠 AI Vector Search Primitives (Native)
+## 🧠 AI Vector Search Primitives (Native HNSW Graph)
 
-VortexKV includes first-class vector search operations without requiring external vector database sidecars:
+VortexKV includes native, first-class **Hierarchical Navigable Small World (HNSW)** multi-layer graph vector indexing without requiring external vector database sidecars like Pinecone, Milvus, or Qdrant:
 
 ### `VADD`
 Store a named high-dimensional vector in a vector index:
@@ -130,13 +130,13 @@ VADD embeddings item_42 0.95 0.12 -0.34 0.81
 ```
 
 ### `VSEARCH`
-Find the Top-K nearest neighbors using Cosine or Euclidean distance:
+Find the Top-K nearest neighbors using sub-millisecond HNSW graph search ($O(\log N)$) with optional beam size override (`EF`):
 ```bash
-VSEARCH <index> <topK> <metric: cosine|euclidean> <q1> <q2> ... <qN>
+VSEARCH <index> <topK> <metric: cosine|euclidean|dot> <q1> <q2> ... <qN> [EF count]
 ```
 *Example:*
 ```bash
-VSEARCH embeddings 5 cosine 0.92 0.10 -0.30 0.85
+VSEARCH embeddings 5 cosine 0.92 0.10 -0.30 0.85 EF 64
 # Output:
 # 1) 1) "item_42"
 #    2) "0.998412"
@@ -145,5 +145,36 @@ VSEARCH embeddings 5 cosine 0.92 0.10 -0.30 0.85
 ### `VSIM`
 Compute similarity directly between two stored vector IDs:
 ```bash
-VSIM <index> <id1> <id2> <metric: cosine|euclidean>
+VSIM <index> <id1> <id2> <metric: cosine|euclidean|dot>
+```
+
+### `VINFO`
+Inspect HNSW graph structure and index hyperparameters:
+```bash
+VINFO <index>
+# Output:
+# 1) "dimension"
+# 2) "128"
+# 3) "count"
+# 4) "10000"
+# 5) "hnsw_metric"
+# 6) "cosine"
+# 7) "hnsw_max_level"
+# 8) "4"
+# 9) "hnsw_m"
+# 10) "16"
+# 11) "hnsw_m0"
+# 12) "32"
+# 13) "hnsw_ef_construction"
+# 14) "64"
+# 15) "hnsw_ef_search"
+# 16) "64"
+# 17) "hnsw_entry_point"
+# 18) "item_42"
+```
+
+### `VDEL`
+Delete one or more vectors by ID from the index and rewire HNSW graph neighbors:
+```bash
+VDEL <index> <id> [<id> ...]
 ```

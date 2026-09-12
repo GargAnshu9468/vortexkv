@@ -13,8 +13,8 @@ var (
 )
 
 type VectorSearchResult struct {
-	ID    string   `json:"id"`
-	Score float64  `json:"score"`
+	ID    string    `json:"id"`
+	Score float64   `json:"score"`
 	Vec   []float32 `json:"vector,omitempty"`
 }
 
@@ -22,12 +22,14 @@ type VectorIndex struct {
 	mu        sync.RWMutex
 	Dimension int
 	Vectors   map[string][]float32
+	HNSW      *HNSWIndex
 }
 
 func NewVectorIndex(dim int) *VectorIndex {
 	return &VectorIndex{
 		Dimension: dim,
 		Vectors:   make(map[string][]float32),
+		HNSW:      NewHNSWIndex(dim, "cosine"),
 	}
 }
 
@@ -40,12 +42,19 @@ func (vi *VectorIndex) Add(id string, vec []float32) error {
 
 	if vi.Dimension == 0 {
 		vi.Dimension = len(vec)
+		if vi.HNSW != nil {
+			vi.HNSW.Dimension = len(vec)
+		}
 	}
 
 	copied := make([]float32, len(vec))
 	copy(copied, vec)
 	vi.Vectors[id] = copied
-	return nil
+
+	if vi.HNSW == nil {
+		vi.HNSW = NewHNSWIndex(vi.Dimension, "cosine")
+	}
+	return vi.HNSW.Insert(id, copied)
 }
 
 func (vi *VectorIndex) Get(id string) ([]float32, bool) {
@@ -74,6 +83,9 @@ func (vi *VectorIndex) Delete(id string) bool {
 
 	if _, exists := vi.Vectors[id]; exists {
 		delete(vi.Vectors, id)
+		if vi.HNSW != nil {
+			vi.HNSW.Delete(id)
+		}
 		return true
 	}
 	return false
@@ -85,12 +97,12 @@ func (vi *VectorIndex) Len() int {
 	return len(vi.Vectors)
 }
 
-// Search finds Top-K nearest vectors using specified metric ("cosine" or "l2")
-func (vi *VectorIndex) Search(query []float32, topK int, metric string) ([]VectorSearchResult, error) {
+// Search finds Top-K nearest vectors using HNSW graph traversal (or exact brute force fallback)
+func (vi *VectorIndex) Search(query []float32, topK int, metric string, efSearchOpt ...int) ([]VectorSearchResult, error) {
 	vi.mu.RLock()
 	defer vi.mu.RUnlock()
 
-	if len(query) != vi.Dimension {
+	if vi.Dimension > 0 && len(query) != vi.Dimension {
 		return nil, ErrDimensionMismatch
 	}
 
@@ -98,6 +110,29 @@ func (vi *VectorIndex) Search(query []float32, topK int, metric string) ([]Vecto
 		topK = 10
 	}
 
+	if metric == "" {
+		metric = "cosine"
+	}
+
+	efSearch := 0
+	if len(efSearchOpt) > 0 {
+		efSearch = efSearchOpt[0]
+	}
+
+	// Use HNSW search if available
+	if vi.HNSW != nil && len(vi.Vectors) > 0 {
+		vi.HNSW.Metric = metric
+		if efSearch <= 0 {
+			efSearch = vi.HNSW.EFSearch
+		}
+		return vi.HNSW.Search(query, topK, efSearch)
+	}
+
+	// Exact linear fallback for empty or unindexed state
+	return vi.exactSearch(query, topK, metric)
+}
+
+func (vi *VectorIndex) exactSearch(query []float32, topK int, metric string) ([]VectorSearchResult, error) {
 	results := make([]VectorSearchResult, 0, len(vi.Vectors))
 
 	for id, vec := range vi.Vectors {
@@ -105,6 +140,12 @@ func (vi *VectorIndex) Search(query []float32, topK int, metric string) ([]Vecto
 		switch metric {
 		case "l2", "euclidean":
 			score = EuclideanDistance(query, vec)
+		case "dot", "innerproduct":
+			var dot float64
+			for i := range query {
+				dot += float64(query[i]) * float64(vec[i])
+			}
+			score = dot
 		default: // "cosine"
 			score = CosineSimilarity(query, vec)
 		}
@@ -115,12 +156,10 @@ func (vi *VectorIndex) Search(query []float32, topK int, metric string) ([]Vecto
 	}
 
 	if metric == "l2" || metric == "euclidean" {
-		// Ascending order for distance (smaller is closer)
 		sort.Slice(results, func(i, j int) bool {
 			return results[i].Score < results[j].Score
 		})
 	} else {
-		// Descending order for similarity (larger is more similar)
 		sort.Slice(results, func(i, j int) bool {
 			return results[i].Score > results[j].Score
 		})
@@ -131,6 +170,29 @@ func (vi *VectorIndex) Search(query []float32, topK int, metric string) ([]Vecto
 	}
 
 	return results, nil
+}
+
+// Info returns index telemetry and HNSW graph parameters
+func (vi *VectorIndex) Info() map[string]any {
+	vi.mu.RLock()
+	defer vi.mu.RUnlock()
+
+	info := map[string]any{
+		"dimension": vi.Dimension,
+		"count":     len(vi.Vectors),
+	}
+	if vi.HNSW != nil {
+		vi.HNSW.mu.RLock()
+		info["hnsw_metric"] = vi.HNSW.Metric
+		info["hnsw_max_level"] = vi.HNSW.MaxLevel
+		info["hnsw_m"] = vi.HNSW.M
+		info["hnsw_m0"] = vi.HNSW.M0
+		info["hnsw_ef_construction"] = vi.HNSW.EFConstruction
+		info["hnsw_ef_search"] = vi.HNSW.EFSearch
+		info["hnsw_entry_point"] = vi.HNSW.EntryPoint
+		vi.HNSW.mu.RUnlock()
+	}
+	return info
 }
 
 func CosineSimilarity(a, b []float32) float64 {

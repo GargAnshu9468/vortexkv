@@ -246,7 +246,7 @@ func isWriteCommand(cmd string) bool {
 		"LPUSH", "RPUSH", "LPOP", "RPOP", "LSET", "LTRIM",
 		"SADD", "SREM", "SPOP",
 		"ZADD", "ZREM", "ZINCRBY", "ZREMRANGEBYSCORE",
-		"VADD", "FLUSHDB", "FLUSHALL", "XADD", "XDEL", "XTRIM", "XGROUP", "XACK":
+		"VADD", "VDEL", "FLUSHDB", "FLUSHALL", "XADD", "XDEL", "XTRIM", "XGROUP", "XACK":
 		return true
 	default:
 		return false
@@ -1129,11 +1129,17 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 	case "VADD":
 		return e.handleVAdd(args)
 
+	case "VDEL":
+		return e.handleVDel(args)
+
 	case "VSEARCH":
 		return e.handleVSearch(args)
 
 	case "VSIM":
 		return e.handleVSim(args)
+
+	case "VINFO":
+		return e.handleVInfo(args)
 
 	// ================= Pub/Sub Commands =================
 	case "PUBLISH":
@@ -2172,10 +2178,53 @@ func (e *Engine) handleVAdd(args []string) (resp.Value, bool) {
 	return resp.SimpleString("OK"), true
 }
 
-// VSEARCH key top_k metric f1 f2 ... fn
+// VDEL key id [id ...]
+func (e *Engine) handleVDel(args []string) (resp.Value, bool) {
+	if len(args) < 2 {
+		return resp.Error("ERR wrong number of arguments for 'vdel' command"), false
+	}
+	key := args[0]
+	entry, ok := e.Keyspace.Get(key)
+	if !ok || entry.Type != TypeVector {
+		return resp.Integer(0), false
+	}
+	vi := entry.Value.(*datastruct.VectorIndex)
+	var deleted int64
+	for _, id := range args[1:] {
+		if vi.Delete(id) {
+			deleted++
+		}
+	}
+	return resp.Integer(deleted), true
+}
+
+// VINFO key
+func (e *Engine) handleVInfo(args []string) (resp.Value, bool) {
+	if len(args) < 1 {
+		return resp.Error("ERR wrong number of arguments for 'vinfo' command"), false
+	}
+	key := args[0]
+	entry, ok := e.Keyspace.Get(key)
+	if !ok || entry.Type != TypeVector {
+		return resp.Error("ERR no such vector index or key is not vector"), false
+	}
+	vi := entry.Value.(*datastruct.VectorIndex)
+	info := vi.Info()
+
+	var items []resp.Value
+	keysOrder := []string{"dimension", "count", "hnsw_metric", "hnsw_max_level", "hnsw_m", "hnsw_m0", "hnsw_ef_construction", "hnsw_ef_search", "hnsw_entry_point"}
+	for _, k := range keysOrder {
+		if val, exists := info[k]; exists {
+			items = append(items, resp.BulkString(k), resp.BulkString(fmt.Sprintf("%v", val)))
+		}
+	}
+	return resp.Array(items), false
+}
+
+// VSEARCH key top_k metric f1 f2 ... fn [EF count]
 func (e *Engine) handleVSearch(args []string) (resp.Value, bool) {
 	if len(args) < 4 {
-		return resp.Error("ERR wrong number of arguments for 'vsearch': VSEARCH key top_k metric f1 f2 ..."), false
+		return resp.Error("ERR wrong number of arguments for 'vsearch': VSEARCH key top_k metric f1 f2 ... [EF count]"), false
 	}
 	key := args[0]
 	topK, err := strconv.Atoi(args[1])
@@ -2184,13 +2233,22 @@ func (e *Engine) handleVSearch(args []string) (resp.Value, bool) {
 	}
 	metric := strings.ToLower(args[2])
 
-	query := make([]float32, len(args)-3)
-	for i := 3; i < len(args); i++ {
-		f, err := strconv.ParseFloat(args[i], 32)
-		if err != nil {
-			return resp.Error(fmt.Sprintf("ERR invalid float in query vector at position %d", i-2)), false
+	efSearch := 0
+	dimCount := len(args) - 3
+	if len(args) >= 5 && strings.ToUpper(args[len(args)-2]) == "EF" {
+		if efVal, err := strconv.Atoi(args[len(args)-1]); err == nil && efVal > 0 {
+			efSearch = efVal
+			dimCount -= 2
 		}
-		query[i-3] = float32(f)
+	}
+
+	query := make([]float32, dimCount)
+	for i := 0; i < dimCount; i++ {
+		f, err := strconv.ParseFloat(args[3+i], 32)
+		if err != nil {
+			return resp.Error(fmt.Sprintf("ERR invalid float in query vector at position %d", i+1)), false
+		}
+		query[i] = float32(f)
 	}
 
 	entry, ok := e.Keyspace.Get(key)
@@ -2199,7 +2257,7 @@ func (e *Engine) handleVSearch(args []string) (resp.Value, bool) {
 	}
 
 	vi := entry.Value.(*datastruct.VectorIndex)
-	results, err := vi.Search(query, topK, metric)
+	results, err := vi.Search(query, topK, metric, efSearch)
 	if err != nil {
 		return resp.Error("ERR " + err.Error()), false
 	}
