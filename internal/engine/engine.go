@@ -35,6 +35,7 @@ type Engine struct {
 	RDBPath        string
 	ACL            *ACLManager
 	Lua            *LuaManager
+	Wasm           *WasmManager
 	Replication    *replication.ReplicationManager
 	Cluster        *cluster.ClusterManager
 	Password       string
@@ -51,6 +52,7 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy, rdbPathOpt .
 	tele := telemetry.NewTelemetry()
 	acl := NewACLManager("")
 	luaMgr := NewLuaManager()
+	wasmMgr, _ := NewWasmManager()
 
 	rdbPath := "dump.rdb"
 	if len(rdbPathOpt) > 0 {
@@ -83,6 +85,7 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy, rdbPathOpt .
 			Telemetry:      tele,
 			ACL:            acl,
 			Lua:            luaMgr,
+			Wasm:           wasmMgr,
 			clientSessions: make(map[string]*ClientSession),
 		}
 		_ = persistence.Replay(aofPath, func(args []string) error {
@@ -105,6 +108,7 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy, rdbPathOpt .
 		RDBPath:        rdbPath,
 		ACL:            acl,
 		Lua:            luaMgr,
+		Wasm:           wasmMgr,
 		EvictionPolicy: "allkeys-lru",
 		clientSessions: make(map[string]*ClientSession),
 	}
@@ -475,6 +479,12 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 			return resp.Error("ERR Lua engine not initialized"), false
 		}
 		return e.Lua.ScriptCommand(args), false
+
+	case "WASM":
+		if e.Wasm == nil {
+			return resp.Error("ERR WebAssembly runtime unavailable"), false
+		}
+		return e.Wasm.HandleCommand(e, args), false
 
 	case "CLIENT":
 		if len(args) > 0 && strings.ToUpper(args[0]) == "SETNAME" {
@@ -2499,7 +2509,7 @@ func extractCommandKeys(cmd string, args []string) []string {
 	case "AUTH", "PING", "ECHO", "QUIT", "COMMAND", "CLIENT", "SELECT", "INFO", "DBSIZE",
 		"TIME", "SLOWLOG", "MULTI", "EXEC", "DISCARD", "BGREWRITEAOF", "ACL",
 		"FLUSHDB", "FLUSHALL", "CONFIG", "SHUTDOWN", "PUBSUB", "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE",
-		"SAVE", "BGSAVE", "LASTSAVE", "CLUSTER", "REPLICAOF", "SLAVEOF", "REPLCONF", "ROLE", "SCRIPT":
+		"SAVE", "BGSAVE", "LASTSAVE", "CLUSTER", "REPLICAOF", "SLAVEOF", "REPLCONF", "ROLE", "SCRIPT", "WASM":
 		return nil
 	case "EVAL", "EVALSHA":
 		if len(args) < 2 {
@@ -2855,6 +2865,27 @@ func (e *Engine) handleClusterCommand(connID string, args []string) (resp.Value,
 			slots = append(slots, uint16(s))
 		}
 		if err := e.Cluster.DelSlots(slots...); err != nil {
+			return resp.Error(err.Error()), false
+		}
+		return resp.SimpleString("OK"), false
+
+	case "SETSLOT":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		if len(args) < 3 {
+			return resp.Error("ERR wrong number of arguments for 'cluster setslot' command"), false
+		}
+		slot, err := strconv.Atoi(args[1])
+		if err != nil || slot < 0 || slot >= 16384 {
+			return resp.Error(fmt.Sprintf("ERR Invalid or out of range slot '%s'", args[1])), false
+		}
+		subcmd := strings.ToUpper(args[2])
+		targetNodeID := ""
+		if len(args) >= 4 {
+			targetNodeID = args[3]
+		}
+		if err := e.Cluster.SetSlot(uint16(slot), subcmd, targetNodeID); err != nil {
 			return resp.Error(err.Error()), false
 		}
 		return resp.SimpleString("OK"), false

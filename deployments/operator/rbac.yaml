@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vortex-operator
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vortex-operator-role
+rules:
+  - apiGroups:
+      - vortexkv.io
+    resources:
+      - vortexclusters
+      - vortexclusters/status
+      - vortexclusters/finalizers
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+      - endpoints
+      - persistentvolumeclaims
+      - events
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vortex-operator-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vortex-operator-role
+subjects:
+  - kind: ServiceAccount
+    name: vortex-operator
+    namespace: default

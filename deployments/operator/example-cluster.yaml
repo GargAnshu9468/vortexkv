@@ -1,0 +1,15 @@
+apiVersion: vortexkv.io/v1alpha1
+kind: VortexCluster
+metadata:
+  name: prod-cluster
+  namespace: default
+spec:
+  masters: 3
+  replicasPerMaster: 1
+  image: "vortexkv/vortexkv:latest"
+  requirepass: "vortex_k8s_secret_2026"
+  maxmemory: "2gb"
+  storage:
+    size: "20Gi"
+    storageClassName: "standard"
+  serviceType: "ClusterIP"

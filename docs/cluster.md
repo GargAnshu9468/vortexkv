@@ -258,3 +258,60 @@ VortexKV nodes continuously communicate out-of-band over a binary TCP bus operat
      - Broadcasts an updated `PONG` announcement with new slot ownership to the entire cluster.
      - Commits new topology to `nodes.conf`.
 
+---
+
+## ⚖️ Automated Cluster Slot Rebalancing
+
+When masters are added or removed, VortexKV provides an integrated slot rebalancer built into `vortex-cli`.
+
+### Interactive or Automated Slot Redistribution
+```bash
+# Preview the migration plan without applying changes
+vortex-cli -p 7379 -a "vortex_secure_2026" -dry-run cluster rebalance
+
+# Execute automated rebalance across all master nodes
+vortex-cli -p 7379 -a "vortex_secure_2026" -auto cluster rebalance
+```
+
+The rebalancer automatically:
+1. Discovers all masters and computes the ideal slot target: $16384 / N$.
+2. Generates the minimal donor-to-receiver slot migration plan.
+3. Sets `IMPORTING` on receiver and `MIGRATING` on donor.
+4. Moves stored keys across slots and finalizes ownership via `CLUSTER SETSLOT <slot> NODE <receiver-id>`.
+
+---
+
+## ☸️ VortexKV Kubernetes Operator (`kind: VortexCluster`)
+
+VortexKV provides an official Kubernetes Operator that manages automated multi-master cluster topologies declaratively.
+
+### 1. Install Operator CRD & RBAC
+```bash
+kubectl apply -f deployments/operator/crd.yaml
+kubectl apply -f deployments/operator/rbac.yaml
+kubectl apply -f deployments/operator/operator.yaml
+```
+
+### 2. Deploy a Production Cluster
+```yaml
+apiVersion: vortexkv.io/v1alpha1
+kind: VortexCluster
+metadata:
+  name: prod-cluster
+  namespace: default
+spec:
+  masters: 3
+  replicasPerMaster: 1
+  image: "vortexkv/vortexkv:latest"
+  requirepass: "vortex_k8s_secret_2026"
+  maxmemory: "2gb"
+  storage:
+    size: "20Gi"
+```
+```bash
+kubectl apply -f deployments/operator/example-cluster.yaml
+```
+
+The operator automatically reconciles StatefulSets, executes inter-pod `CLUSTER MEET`, partitions all 16,384 slots across masters, and handles dynamic scale-out and rebalancing!
+
+

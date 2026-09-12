@@ -262,6 +262,15 @@ Durable atomic commit of cluster configuration to `nodes.conf`:
 CLUSTER SAVECONFIG
 ```
 
+### `CLUSTER SETSLOT`
+Dynamically migrate or reassign a hash slot between cluster nodes:
+```bash
+CLUSTER SETSLOT <slot> NODE <node-id>
+CLUSTER SETSLOT <slot> MIGRATING <node-id>
+CLUSTER SETSLOT <slot> IMPORTING <node-id>
+CLUSTER SETSLOT <slot> STABLE
+```
+
 ---
 
 ## ⚡ Embedded Lua 5.1 Scripting
@@ -305,4 +314,38 @@ Terminate a long-running or non-mutating infinite loop script:
 ```bash
 SCRIPT KILL
 ```
+
+---
+
+## 🔮 WebAssembly (Wasm) Functions Engine
+
+VortexKV embeds a pure-Go WebAssembly runtime (`wazero`) capable of executing sandboxed WebAssembly binaries (compiled from Rust, Go, C/C++, or AssemblyScript) with native keyspace bindings.
+
+### `WASM LOAD`
+Compile and store a WebAssembly module in memory:
+```bash
+WASM LOAD <func_name> <hex_bytecode_or_bytes>
+# Example:
+WASM LOAD mycalc "0061736d010000000105016000017f030201000707010372756e00000a06010400412a0b"
+```
+
+### `WASM CALL`
+Execute an exported function in a sandboxed Wasm instance:
+```bash
+WASM CALL <func_name> [<arg1> <arg2> ...]
+# Returns: (integer) 42
+```
+
+### `WASM LIST`
+List all registered Wasm functions with byte size and execution counts:
+```bash
+WASM LIST
+```
+
+### `WASM DELETE`
+Unload and free a Wasm module from memory:
+```bash
+WASM DELETE <func_name>
+```
+
 

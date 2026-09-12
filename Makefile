@@ -6,12 +6,14 @@ build:
 	@mkdir -p bin
 	go build -o bin/vortex-server ./cmd/vortex-server
 	go build -o bin/vortex-cli ./cmd/vortex-cli
+	go build -o bin/vortex-operator ./cmd/vortex-operator
 	@echo "✓ Binaries built successfully in bin/"
 
 install: build
 	@echo "Installing binaries to /usr/local/bin..."
 	install -m 755 bin/vortex-server /usr/local/bin/vortex-server
 	install -m 755 bin/vortex-cli /usr/local/bin/vortex-cli
+	install -m 755 bin/vortex-operator /usr/local/bin/vortex-operator
 	@echo "✓ VortexKV installed to /usr/local/bin"
 
 test:

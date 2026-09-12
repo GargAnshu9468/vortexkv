@@ -76,6 +76,7 @@ jobs:
 
           go build -trimpath -ldflags="-s -w -X main.version=${TAG}" -o "$PKG_NAME/vortex-server${BINARY_EXT}" ./cmd/vortex-server
           go build -trimpath -ldflags="-s -w -X main.version=${TAG}" -o "$PKG_NAME/vortex-cli${BINARY_EXT}" ./cmd/vortex-cli
+          go build -trimpath -ldflags="-s -w -X main.version=${TAG}" -o "$PKG_NAME/vortex-operator${BINARY_EXT}" ./cmd/vortex-operator
 
           [ -f README.md ] && cp README.md "$PKG_NAME/"
           [ -f LICENSE ] && cp LICENSE "$PKG_NAME/"

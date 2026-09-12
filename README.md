@@ -20,7 +20,10 @@
   - Configurable `maxclients` connection ceiling (default 10,000).
 - 🔄 **ACID Atomic Transactions**: Full support for `MULTI`, `EXEC`, and `DISCARD`.
 - 📜 **Embedded Lua 5.1 Scripting**: Sub-millisecond atomic multi-step scripts (`EVAL`, `EVALSHA`, `SCRIPT LOAD`, `SCRIPT EXISTS`, `SCRIPT FLUSH`, `SCRIPT KILL`) with pure-Go runtime, bidirectional RESP conversion, `redis.call`/`redis.pcall` bridge, SHA1 caching, and 5-second runaway timeout protection.
+- 🔮 **WebAssembly (Wasm) Engine**: Pure-Go WebAssembly runtime powered by `wazero` (zero CGO) executing compiled modules (`WASM LOAD`, `WASM CALL`, `WASM LIST`, `WASM DELETE`) with native keyspace bindings (`vortex_get`, `vortex_set`).
 - 📡 **Cluster Gossip Bus & Automatic Failover**: Dedicated binary inter-node bus on `port + 10000` (e.g. `17379`) with continuous heartbeat exchanges, majority `PFAIL`/`FAIL` detection consensus, and fully autonomous replica election and slot takeover without human intervention.
+- ⚖️ **Automated Cluster Slot Rebalancer**: Native CLI command `vortex-cli cluster rebalance [--auto] [--dry-run]` calculating minimal migration diffs and automating key and slot migrations across masters.
+- ☸️ **VortexKV Kubernetes Operator**: Declarative CustomResourceDefinition (`kind: VortexCluster`, `v1alpha1`) and Go controller managing automated pod lifecycle, slot partitioning, and dynamic scale-out on Kubernetes.
 - 📦 **Automated Multi-Architecture Releases**: Official GitHub Actions pipeline releasing pre-compiled binary packages for Linux (`amd64`, `arm64`), macOS (`Apple Silicon`, `Intel`), and Windows (`amd64`) with cryptographic SHA256 checksums.
 - 🪐 **2D/3D Force-Directed Keyspace Galaxy**: Interactive canvas visualizer in the browser grouping keys by namespace and data types with neon particle flows.
 - 🧠 **Native HNSW AI Vector Graph Indexing**: Million-scale sub-millisecond approximate nearest-neighbor search (`VADD`, `VSEARCH`, `VSIM`, `VINFO`, `VDEL`) with multi-layer skip-graphs ($O(\log N)$) and cosine, euclidean, and dot product metrics.

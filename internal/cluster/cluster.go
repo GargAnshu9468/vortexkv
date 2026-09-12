@@ -28,6 +28,10 @@ type ClusterManager struct {
 	LastVoteEpoch uint64
 	AuthPass      string
 
+	// Slot migration tracking
+	MigratingSlots map[uint16]string // slot -> target node ID
+	ImportingSlots map[uint16]string // slot -> source node ID
+
 	// Cluster Bus & Gossip fields
 	BusListener net.Listener
 	BusRunning  bool
@@ -55,13 +59,15 @@ func NewClusterManager(ip string, port, busPort int, configFile string) *Cluster
 	self := NewNode("", ip, port, busPort, "master")
 
 	cm := &ClusterManager{
-		Enabled:      true,
-		Self:         self,
-		Nodes:        make(map[string]*ClusterNode),
-		ConfigFile:   configFile,
-		CurrentEpoch: 1,
-		NodeTimeout:  DefaultNodeTimeout,
-		failReports:  make(map[string]map[string]time.Time),
+		Enabled:        true,
+		Self:           self,
+		Nodes:          make(map[string]*ClusterNode),
+		ConfigFile:     configFile,
+		CurrentEpoch:   1,
+		NodeTimeout:    DefaultNodeTimeout,
+		failReports:    make(map[string]map[string]time.Time),
+		MigratingSlots: make(map[uint16]string),
+		ImportingSlots: make(map[uint16]string),
 	}
 	cm.Nodes[self.ID] = self
 
@@ -157,6 +163,66 @@ func (cm *ClusterManager) DelSlots(slots ...uint16) error {
 
 	_ = cm.saveConfigLocked()
 	return nil
+}
+
+// SetSlot updates slot state for migration or ownership changes.
+func (cm *ClusterManager) SetSlot(slot uint16, subcommand string, targetNodeID string) error {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if slot >= 16384 {
+		return fmt.Errorf("ERR slot out of range: %d", slot)
+	}
+
+	if cm.MigratingSlots == nil {
+		cm.MigratingSlots = make(map[uint16]string)
+	}
+	if cm.ImportingSlots == nil {
+		cm.ImportingSlots = make(map[uint16]string)
+	}
+
+	sub := strings.ToUpper(subcommand)
+	switch sub {
+	case "NODE":
+		target, exists := cm.Nodes[targetNodeID]
+		if !exists {
+			return fmt.Errorf("ERR I don't know about node %s", targetNodeID)
+		}
+		if owner := cm.SlotMap[slot]; owner != nil && owner.ID != target.ID {
+			owner.Slots[slot] = false
+		}
+		target.Slots[slot] = true
+		cm.SlotMap[slot] = target
+		delete(cm.MigratingSlots, slot)
+		delete(cm.ImportingSlots, slot)
+		_ = cm.saveConfigLocked()
+		return nil
+
+	case "MIGRATING":
+		if owner := cm.SlotMap[slot]; owner == nil || owner.ID != cm.Self.ID {
+			return fmt.Errorf("ERR slot %d is not owned by this node", slot)
+		}
+		if _, exists := cm.Nodes[targetNodeID]; !exists {
+			return fmt.Errorf("ERR I don't know about node %s", targetNodeID)
+		}
+		cm.MigratingSlots[slot] = targetNodeID
+		return nil
+
+	case "IMPORTING":
+		if _, exists := cm.Nodes[targetNodeID]; !exists {
+			return fmt.Errorf("ERR I don't know about node %s", targetNodeID)
+		}
+		cm.ImportingSlots[slot] = targetNodeID
+		return nil
+
+	case "STABLE":
+		delete(cm.MigratingSlots, slot)
+		delete(cm.ImportingSlots, slot)
+		return nil
+
+	default:
+		return fmt.Errorf("ERR Invalid CLUSTER SETSLOT action or number of arguments")
+	}
 }
 
 // AddNode adds or updates a known cluster node.

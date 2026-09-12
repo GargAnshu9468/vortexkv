@@ -2,4 +2,7 @@ module github.com/vortexkv/vortexkv
 
 go 1.25.4
 
-require github.com/yuin/gopher-lua v1.1.2 // indirect
+require (
+	github.com/tetratelabs/wazero v1.8.0 // indirect
+	github.com/yuin/gopher-lua v1.1.2 // indirect
+)

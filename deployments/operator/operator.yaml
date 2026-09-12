@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vortex-operator
+  namespace: default
+  labels:
+    app.kubernetes.io/name: vortex-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vortex-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vortex-operator
+    spec:
+      serviceAccountName: vortex-operator
+      containers:
+        - name: operator
+          image: vortexkv/vortex-operator:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /usr/local/bin/vortex-operator
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
