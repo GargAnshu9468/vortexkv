@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -38,6 +39,9 @@ func NewServer(addr string, eng *engine.Engine) *Server {
 	mux.HandleFunc("/api/acl/users", s.authMiddleware(s.handleACLListUsers))
 	mux.HandleFunc("/api/acl/user", s.authMiddleware(s.handleACLSaveUser))
 	mux.HandleFunc("/api/acl/user/delete", s.authMiddleware(s.handleACLDeleteUser))
+	mux.HandleFunc("/api/replication", s.authMiddleware(s.handleReplicationStatus))
+	mux.HandleFunc("/api/replication/promote", s.authMiddleware(s.handleReplicationPromote))
+	mux.HandleFunc("/api/replication/replicate", s.authMiddleware(s.handleReplicationReplicate))
 	mux.HandleFunc("/api/info", s.authMiddleware(s.handleInfo))
 	mux.HandleFunc("/api/metrics", s.authMiddleware(s.handleMetrics))
 	mux.HandleFunc("/healthz", s.handleHealthz)
@@ -296,6 +300,69 @@ func (s *Server) handleACLDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	ok := s.engine.ACL.DeleteUser(name)
 	writeJSON(w, http.StatusOK, map[string]any{"success": ok, "user": name})
+}
+
+func (s *Server) handleReplicationStatus(w http.ResponseWriter, r *http.Request) {
+	if s.engine.Replication == nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"role":             "master",
+			"connected_slaves": 0,
+			"slaves":           []any{},
+			"readonly":         false,
+		})
+		return
+	}
+	status := s.engine.Replication.GetStatus()
+	writeJSON(w, http.StatusOK, status)
+}
+
+func (s *Server) handleReplicationPromote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.engine.Replication == nil {
+		http.Error(w, "Replication manager unavailable", http.StatusInternalServerError)
+		return
+	}
+	s.engine.Replication.PromoteToMaster()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "Node successfully promoted to independent Master",
+		"role":    "master",
+	})
+}
+
+func (s *Server) handleReplicationReplicate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Host     string `json:"host"`
+		Port     int    `json:"port"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Host) == "" || req.Port <= 0 {
+		http.Error(w, "Invalid host or port payload", http.StatusBadRequest)
+		return
+	}
+	if s.engine.Replication == nil {
+		http.Error(w, "Replication manager unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	authPass := req.Password
+	if authPass == "" {
+		authPass = s.engine.Password
+	}
+
+	s.engine.Replication.ConnectToMaster(strings.TrimSpace(req.Host), req.Port, authPass)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": fmt.Sprintf("Connecting to master %s:%d", req.Host, req.Port),
+		"role":    "slave",
+	})
 }
 
 func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {

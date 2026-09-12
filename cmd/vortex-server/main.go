@@ -79,9 +79,9 @@ func main() {
 
 	if eng.Replication != nil {
 		eng.Replication.ListeningPort = *port
-		eng.Replication.ReadOnly = *replicaReadOnly
 
 		if *replicaof != "" {
+			eng.Replication.ReadOnly = *replicaReadOnly
 			parts := strings.Fields(strings.ReplaceAll(*replicaof, ":", " "))
 			if len(parts) >= 2 {
 				mHost := parts[0]
@@ -94,6 +94,8 @@ func main() {
 					eng.Replication.ConnectToMaster(mHost, mPort, auth)
 				}
 			}
+		} else {
+			eng.Replication.ReadOnly = false
 		}
 	}
 

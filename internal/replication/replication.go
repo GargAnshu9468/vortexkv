@@ -36,6 +36,35 @@ type ReplicaClient struct {
 	ConnectedAt   time.Time
 }
 
+// ReplicaInfo provides detailed telemetry for a connected replica
+type ReplicaInfo struct {
+	ID            string `json:"id"`
+	RemoteAddr    string `json:"remote_addr"`
+	IP            string `json:"ip"`
+	ListeningPort int    `json:"listening_port"`
+	State         string `json:"state"`
+	Offset        int64  `json:"offset"`
+	Lag           int64  `json:"lag"`
+	ConnectedAt   string `json:"connected_at"`
+	ConnectedSecs int64  `json:"connected_secs"`
+}
+
+// ReplicationStatus encapsulates comprehensive cluster replication status
+type ReplicationStatus struct {
+	Role            string        `json:"role"`
+	MasterReplID    string        `json:"master_replid"`
+	MasterOffset    int64         `json:"master_offset"`
+	MasterHost      string        `json:"master_host"`
+	MasterPort      int           `json:"master_port"`
+	MasterLinkState string        `json:"master_link_state"`
+	LastMasterPing  int64         `json:"last_master_ping_ago_secs"`
+	SyncState       string        `json:"sync_state"`
+	ReadOnly        bool          `json:"readonly"`
+	ListeningPort   int           `json:"listening_port"`
+	ConnectedSlaves int           `json:"connected_slaves"`
+	Slaves          []ReplicaInfo `json:"slaves"`
+}
+
 type ReplicationManager struct {
 	mu             sync.RWMutex
 	Role           Role
@@ -432,3 +461,59 @@ func (rm *ReplicationManager) GenerateReplicationInfo() string {
 
 	return b.String()
 }
+
+// GetStatus returns a thread-safe structured snapshot of current replication topology
+func (rm *ReplicationManager) GetStatus() ReplicationStatus {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+
+	masterOffset := rm.MasterOffset.Load()
+	slaves := make([]ReplicaInfo, 0, len(rm.replicas))
+	for _, r := range rm.replicas {
+		ip := r.RemoteAddr
+		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+			ip = host
+		}
+		lag := masterOffset - r.Offset
+		if lag < 0 {
+			lag = 0
+		}
+		slaves = append(slaves, ReplicaInfo{
+			ID:            r.ID,
+			RemoteAddr:    r.RemoteAddr,
+			IP:            ip,
+			ListeningPort: r.ListeningPort,
+			State:         r.State,
+			Offset:        r.Offset,
+			Lag:           lag,
+			ConnectedAt:   r.ConnectedAt.Format(time.RFC3339),
+			ConnectedSecs: int64(time.Since(r.ConnectedAt).Seconds()),
+		})
+	}
+
+	linkState := "up"
+	if rm.Role == RoleReplica && rm.syncState != "online" {
+		linkState = "down"
+	}
+
+	lastPingAgo := int64(-1)
+	if !rm.lastMasterPing.IsZero() {
+		lastPingAgo = int64(time.Since(rm.lastMasterPing).Seconds())
+	}
+
+	return ReplicationStatus{
+		Role:            string(rm.Role),
+		MasterReplID:    rm.MasterReplID,
+		MasterOffset:    masterOffset,
+		MasterHost:      rm.MasterHost,
+		MasterPort:      rm.MasterPort,
+		MasterLinkState: linkState,
+		LastMasterPing:  lastPingAgo,
+		SyncState:       rm.syncState,
+		ReadOnly:        rm.ReadOnly,
+		ListeningPort:   rm.ListeningPort,
+		ConnectedSlaves: len(slaves),
+		Slaves:          slaves,
+	}
+}
+

@@ -132,4 +132,13 @@ func TestReplicationLifecycleAndSync(t *testing.T) {
 	if !strings.Contains(masterInfo, "role:master") || !strings.Contains(masterInfo, "connected_slaves:1") {
 		t.Fatalf("Unexpected master replication info:\n%s", masterInfo)
 	}
+
+	// 9. Test GetStatus()
+	status := masterMgr.GetStatus()
+	if status.Role != "master" || status.ConnectedSlaves != 1 || len(status.Slaves) != 1 {
+		t.Fatalf("Unexpected master GetStatus(): %+v", status)
+	}
+	if status.Slaves[0].ListeningPort != 7381 {
+		t.Fatalf("Expected slave listening port 7381, got %d", status.Slaves[0].ListeningPort)
+	}
 }
