@@ -23,7 +23,7 @@
 - 🧠 **Native HNSW AI Vector Graph Indexing**: Million-scale sub-millisecond approximate nearest-neighbor search (`VADD`, `VSEARCH`, `VSIM`, `VINFO`, `VDEL`) with multi-layer skip-graphs ($O(\log N)$) and cosine, euclidean, and dot product metrics.
 - ⏱️ **Zero-Alloc Active & Passive TTL Expiration**: Sub-millisecond timing wheel and probabilistic active sampling.
 - 📦 **Zero-Concern Production Packaging**: Includes multi-stage `Dockerfile`, `systemd` service unit (`vortexkv.service`), and production template `vortex.conf`.
-- 💾 **Append-Only File (AOF) Durability**: Complete durability with configurable fsync policies (`always`, `everysec`, `no`).
+- 💾 **Dual Persistence (AOF + Binary RDB Snapshots)**: Complete point-in-time snapshotting (`SAVE`, `BGSAVE`, `LASTSAVE`) in standard `REDIS0009` format with 64-bit CRC64 checksum validation, alongside Append-Only File (AOF) durability with configurable fsync policies (`always`, `everysec`, `no`).
 - 🔁 **Master-Replica Asynchronous Replication**: Redis 6+ compatible `PSYNC`, `REPLCONF`, and `REPLICAOF` for horizontal read scaling, live command streaming, and instant failover (`REPLICAOF NO ONE`).
 - 🌊 **Redis Streams & Consumer Groups**: High-throughput, sub-millisecond event streaming and distributed task queues (`XADD`, `XREAD`, `XGROUP`, `XREADGROUP`, `XACK`, `XPENDING`, `XINFO`) with Pending Entries List (PEL) and zero-CPU blocking reads.
 - 📡 **Real-time Web Studio & WebSocket Stream**: Embedded SPA dashboard running on port `7380` with zero external dependencies.

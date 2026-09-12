@@ -99,6 +99,18 @@ EXEC
 
 ---
 
+## 💾 Binary RDB Snapshots & Persistence
+
+Standard Redis point-in-time binary snapshot persistence (`REDIS0009`) with CRC64-Jones integrity verification:
+
+| Command | Syntax | Description |
+| :--- | :--- | :--- |
+| **`SAVE`** | `SAVE` | Synchronously write point-in-time snapshot to disk (`dump.rdb`). Blocks until complete. |
+| **`BGSAVE`** | `BGSAVE` | Asynchronously save snapshot in background goroutine without blocking clients. |
+| **`LASTSAVE`** | `LASTSAVE` | Return UNIX epoch timestamp of last successful disk save. |
+
+---
+
 ## 👥 Multi-User Access Control Lists (ACL)
 
 Standard Redis 6+ wire commands:

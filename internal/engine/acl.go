@@ -168,7 +168,7 @@ func (m *ACLManager) CanExecute(username, cmdName string, keys []string) (bool, 
 			switch cmdUpper {
 			case "SET", "SETEX", "SETNX", "MSET", "DEL", "INCR", "INCRBY", "DECR", "DECRBY",
 				"LPUSH", "RPUSH", "LPOP", "RPOP", "HSET", "HMSET", "HDEL", "HINCRBY",
-				"SADD", "SREM", "ZADD", "ZREM", "ZINCRBY", "VADD", "VDEL", "XADD", "XDEL", "XTRIM", "XGROUP", "XACK", "EXPIRE", "EXPIREAT":
+				"SADD", "SREM", "ZADD", "ZREM", "ZINCRBY", "VADD", "VDEL", "XADD", "XDEL", "XTRIM", "XGROUP", "XACK", "EXPIRE", "EXPIREAT", "SAVE", "BGSAVE":
 				return false, fmt.Sprintf("mutating command '%s' not allowed for read-only user '%s'", cmdName, username)
 			}
 		}

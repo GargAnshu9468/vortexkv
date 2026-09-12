@@ -3,6 +3,7 @@ package engine
 import (
 	"crypto/subtle"
 	"fmt"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -29,6 +30,8 @@ type Engine struct {
 	Broker         *pubsub.Broker
 	Telemetry      *telemetry.Telemetry
 	AOF            *persistence.AOF
+	RDBManager     *persistence.RDBManager
+	RDBPath        string
 	ACL            *ACLManager
 	Replication    *replication.ReplicationManager
 	Password       string
@@ -39,12 +42,28 @@ type Engine struct {
 	clientSessions map[string]*ClientSession
 }
 
-func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy) (*Engine, error) {
+func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy, rdbPathOpt ...string) (*Engine, error) {
 	ks := NewKeyspace()
 	broker := pubsub.NewBroker()
 	tele := telemetry.NewTelemetry()
 	acl := NewACLManager("")
 
+	rdbPath := "dump.rdb"
+	if len(rdbPathOpt) > 0 {
+		rdbPath = rdbPathOpt[0]
+	}
+
+	// 1. Load initial state from RDB snapshot if present on disk
+	if rdbPath != "" {
+		if _, err := os.Stat(rdbPath); err == nil {
+			_, _ = persistence.LoadRDB(rdbPath, func(entry persistence.RDBEntry) error {
+				restoreRDBEntry(ks, entry)
+				return nil
+			})
+		}
+	}
+
+	// 2. Replay incremental delta from AOF if present
 	var aof *persistence.AOF
 	if aofPath != "" {
 		var err error
@@ -67,11 +86,18 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy) (*Engine, er
 		})
 	}
 
+	var rdbMgr *persistence.RDBManager
+	if rdbPath != "" {
+		rdbMgr = persistence.NewRDBManager(rdbPath)
+	}
+
 	eng := &Engine{
 		Keyspace:       ks,
 		Broker:         broker,
 		Telemetry:      tele,
 		AOF:            aof,
+		RDBManager:     rdbMgr,
+		RDBPath:        rdbPath,
 		ACL:            acl,
 		EvictionPolicy: "allkeys-lru",
 		clientSessions: make(map[string]*ClientSession),
@@ -86,6 +112,85 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy) (*Engine, er
 		},
 	)
 	return eng, nil
+}
+
+func restoreRDBEntry(ks *Keyspace, entry persistence.RDBEntry) {
+	var ent Entry
+	ent.ExpiresAt = entry.ExpiresAt
+
+	switch entry.Type {
+	case persistence.RDBTypeString:
+		ent.Type = TypeString
+		if s, ok := entry.Value.(string); ok {
+			ent.Value = s
+		}
+
+	case persistence.RDBTypeList:
+		ent.Type = TypeList
+		l := datastruct.NewList()
+		if items, ok := entry.Value.([]string); ok {
+			for _, it := range items {
+				l.RPush(it)
+			}
+		}
+		ent.Value = l
+
+	case persistence.RDBTypeSet:
+		ent.Type = TypeSet
+		s := datastruct.NewSet()
+		if members, ok := entry.Value.([]string); ok {
+			for _, m := range members {
+				s.Add(m)
+			}
+		}
+		ent.Value = s
+
+	case persistence.RDBTypeHash:
+		ent.Type = TypeHash
+		h := datastruct.NewHash()
+		if fields, ok := entry.Value.(map[string]string); ok {
+			for f, v := range fields {
+				h.Set(f, v)
+			}
+		}
+		ent.Value = h
+
+	case persistence.RDBTypeZSet:
+		ent.Type = TypeZSet
+		z := datastruct.NewSkipList()
+		if items, ok := entry.Value.([]persistence.ZSetItem); ok {
+			for _, it := range items {
+				z.Insert(it.Score, it.Member)
+			}
+		}
+		ent.Value = z
+
+	case persistence.RDBTypeStream:
+		ent.Type = TypeStream
+		st := datastruct.NewStream()
+		if items, ok := entry.Value.([]persistence.StreamItem); ok {
+			for _, it := range items {
+				var order []string
+				for f := range it.Fields {
+					order = append(order, f)
+				}
+				_, _ = st.Add(it.ID, it.Fields, order)
+			}
+		}
+		ent.Value = st
+
+	case persistence.RDBTypeVector:
+		ent.Type = TypeVector
+		if vItem, ok := entry.Value.(persistence.VectorItem); ok {
+			vi := datastruct.NewVectorIndex(vItem.Dim)
+			for id, vec := range vItem.Vectors {
+				_ = vi.Add(id, vec)
+			}
+			ent.Value = vi
+		}
+	}
+
+	ks.Set(entry.Key, &ent)
 }
 
 func (e *Engine) SetMasterPassword(pass string) {
@@ -375,6 +480,34 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 			resp.BulkString(linkStatus),
 			resp.Integer(e.Replication.MasterOffset.Load()),
 		}), false
+
+	case "SAVE":
+		if e.RDBManager == nil {
+			return resp.Error("ERR RDB persistence not configured"), false
+		}
+		entries, aux := e.dumpAllRDBEntries()
+		if err := e.RDBManager.Save(entries, aux); err != nil {
+			return resp.Error("ERR " + err.Error()), false
+		}
+		return resp.SimpleString("OK"), false
+
+	case "BGSAVE":
+		if e.RDBManager == nil {
+			return resp.Error("ERR RDB persistence not configured"), false
+		}
+		err := e.RDBManager.BgSave(func() ([]persistence.RDBEntry, map[string]string) {
+			return e.dumpAllRDBEntries()
+		}, nil)
+		if err != nil {
+			return resp.Error("ERR " + err.Error()), false
+		}
+		return resp.SimpleString("Background saving started"), false
+
+	case "LASTSAVE":
+		if e.RDBManager == nil {
+			return resp.Integer(0), false
+		}
+		return resp.Integer(e.RDBManager.LastSave()), false
 
 	case "INFO":
 		infoText := e.Telemetry.GenerateRedisInfo(e.Keyspace.TotalKeys())
@@ -2468,4 +2601,98 @@ func (e *Engine) handleACLCommand(connID string, args []string) (resp.Value, boo
 	default:
 		return resp.Error(fmt.Sprintf("ERR unknown ACL subcommand '%s'", aclSub)), false
 	}
+}
+
+func (e *Engine) dumpAllRDBEntries() ([]persistence.RDBEntry, map[string]string) {
+	var entries []persistence.RDBEntry
+	now := time.Now().UnixMilli()
+
+	for i := 0; i < NumShards; i++ {
+		shard := e.Keyspace.shards[i]
+		shard.mu.RLock()
+		for k, entry := range shard.entries {
+			if entry.IsExpired(now) {
+				continue
+			}
+
+			rdbE := persistence.RDBEntry{
+				Key:       k,
+				ExpiresAt: entry.ExpiresAt,
+			}
+
+			switch entry.Type {
+			case TypeString:
+				if s, ok := entry.Value.(string); ok {
+					rdbE.Type = persistence.RDBTypeString
+					rdbE.Value = s
+					entries = append(entries, rdbE)
+				}
+			case TypeHash:
+				if h, ok := entry.Value.(*datastruct.Hash); ok {
+					rdbE.Type = persistence.RDBTypeHash
+					rdbE.Value = h.GetAll()
+					entries = append(entries, rdbE)
+				}
+			case TypeList:
+				if l, ok := entry.Value.(*datastruct.List); ok {
+					rdbE.Type = persistence.RDBTypeList
+					rdbE.Value = l.Range(0, -1)
+					entries = append(entries, rdbE)
+				}
+			case TypeSet:
+				if s, ok := entry.Value.(*datastruct.Set); ok {
+					rdbE.Type = persistence.RDBTypeSet
+					rdbE.Value = s.Members()
+					entries = append(entries, rdbE)
+				}
+			case TypeZSet:
+				if z, ok := entry.Value.(*datastruct.SkipList); ok {
+					items := z.Range(0, -1, false)
+					zItems := make([]persistence.ZSetItem, len(items))
+					for idx, it := range items {
+						zItems[idx] = persistence.ZSetItem{Score: it.Score, Member: it.Member}
+					}
+					rdbE.Type = persistence.RDBTypeZSet
+					rdbE.Value = zItems
+					entries = append(entries, rdbE)
+				}
+			case TypeStream:
+				if st, ok := entry.Value.(*datastruct.Stream); ok {
+					streamEntries := st.Range("-", "+", 0)
+					sItems := make([]persistence.StreamItem, len(streamEntries))
+					for idx, it := range streamEntries {
+						sItems[idx] = persistence.StreamItem{ID: it.ID, Fields: it.Fields}
+					}
+					rdbE.Type = persistence.RDBTypeStream
+					rdbE.Value = sItems
+					entries = append(entries, rdbE)
+				}
+			case TypeVector:
+				if v, ok := entry.Value.(*datastruct.VectorIndex); ok {
+					rdbE.Type = persistence.RDBTypeVector
+					rdbE.Value = persistence.VectorItem{
+						Dim:     v.Dimension,
+						Vectors: v.GetAll(),
+					}
+					entries = append(entries, rdbE)
+				}
+			}
+		}
+		shard.mu.RUnlock()
+	}
+
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	aux := map[string]string{
+		"redis-ver": "1.0.0-PROD",
+		"redis-bits": "64",
+		"ctime":     strconv.FormatInt(time.Now().Unix(), 10),
+		"used-mem":  strconv.FormatUint(m.Alloc, 10),
+	}
+	if e.Replication != nil {
+		aux["vortex-replid"] = e.Replication.MasterReplID
+	}
+
+	return entries, aux
 }

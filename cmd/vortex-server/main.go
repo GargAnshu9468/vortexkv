@@ -47,6 +47,7 @@ func main() {
 	webBind := flag.String("web-bind", "0.0.0.0", "Network address to bind Web Studio")
 
 	aofPath := flag.String("aof", "vortex.aof", "Path to Append-Only File (leave empty to disable persistence)")
+	rdbPath := flag.String("rdb", "dump.rdb", "Path to binary RDB snapshot file (leave empty to disable)")
 	fsync := flag.String("fsync", "everysec", "Fsync policy for AOF: always | everysec | no")
 	flag.Parse()
 
@@ -60,7 +61,7 @@ func main() {
 		fsyncPol = persistence.FsyncNo
 	}
 
-	eng, err := engine.NewEngine(*aofPath, fsyncPol)
+	eng, err := engine.NewEngine(*aofPath, fsyncPol, *rdbPath)
 	if err != nil {
 		log.Fatalf("[VortexKV] Failed to initialize engine: %v", err)
 	}
@@ -151,6 +152,9 @@ func main() {
 	}
 	if *aofPath != "" {
 		fmt.Printf("\033[38;2;0;243;255m[VortexKV]\033[0m 💾 AOF Persistence active: %s (fsync=%s)\n", *aofPath, *fsync)
+	}
+	if *rdbPath != "" {
+		fmt.Printf("\033[38;2;0;243;255m[VortexKV]\033[0m 💾 RDB Snapshots active: %s (CRC64 checksum enabled)\n", *rdbPath)
 	}
 	fmt.Println("\033[90m----------------------------------------------------------------------\033[0m")
 
