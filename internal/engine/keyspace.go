@@ -502,6 +502,17 @@ func (ks *Keyspace) DumpAllCommands() [][]string {
 						cmds = append(cmds, vaddArgs)
 					}
 				}
+			case TypeStream:
+				if s, ok := entry.Value.(*datastruct.Stream); ok {
+					entries := s.Range("-", "+", 0)
+					for _, item := range entries {
+						xaddArgs := []string{"XADD", k, item.ID}
+						for f, v := range item.Fields {
+							xaddArgs = append(xaddArgs, f, v)
+						}
+						cmds = append(cmds, xaddArgs)
+					}
+				}
 			}
 
 			// If key has TTL, preserve expiration

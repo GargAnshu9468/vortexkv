@@ -62,6 +62,27 @@ VortexKV supports the standard Redis RESP command set as well as next-generation
 
 ---
 
+## 🌊 Streams & Consumer Groups
+
+Full Redis wire-compatible append-only streaming and distributed task queue operations:
+
+| Command | Syntax | Description |
+| :--- | :--- | :--- |
+| **`XADD`** | `XADD key [MAXLEN [~] count] <ID\|*> field val [field val ...]` | Append entry to stream with auto or explicit ID. |
+| **`XLEN`** | `XLEN key` | Return total number of items in stream. |
+| **`XRANGE`** | `XRANGE key start end [COUNT n]` | Query range of entries between IDs (`-` = min, `+` = max). |
+| **`XREVRANGE`** | `XREVRANGE key end start [COUNT n]` | Query range in reverse chronological order. |
+| **`XDEL`** | `XDEL key id [id ...]` | Delete entries from stream by ID. |
+| **`XTRIM`** | `XTRIM key MAXLEN [~] count` | Trim stream length to specified count. |
+| **`XREAD`** | `XREAD [COUNT n] [BLOCK ms] STREAMS key [key ...] id [id ...]` | Read entries after given IDs with optional blocking. |
+| **`XGROUP`** | `XGROUP CREATE\|SETID\|DESTROY\|DELCONSUMER ...` | Manage stream consumer groups and worker registrations. |
+| **`XREADGROUP`** | `XREADGROUP GROUP group consumer [COUNT n] [BLOCK ms] STREAMS key [key ...] >` | Distribute unique unread messages across worker pool. |
+| **`XACK`** | `XACK key group id [id ...]` | Acknowledge processed messages and purge from PEL. |
+| **`XPENDING`** | `XPENDING key group [[IDLE ms] start end count [consumer]]` | Inspect unacknowledged pending messages list (PEL). |
+| **`XINFO`** | `XINFO STREAM\|GROUPS\|CONSUMERS key [group]` | Stream and consumer group telemetry and diagnostics. |
+
+---
+
 ## 🔄 Atomic Transactions
 
 VortexKV supports ACID atomic multi-command batches:

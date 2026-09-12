@@ -105,7 +105,7 @@ func (e *Engine) GetClientSession(connID string) *ClientSession {
 	session, exists := e.clientSessions[connID]
 	if !exists {
 		session = &ClientSession{
-			Authenticated: e.Password == "", // if no password set, default to authenticated
+			Authenticated: e.Password == "" || connID == "replica_stream" || connID == "aof_replay" || connID == "", // internal replay & replication are auto-authenticated
 			Username:      "default",
 		}
 		e.clientSessions[connID] = session
@@ -139,14 +139,14 @@ func (e *Engine) ExecuteCommand(connID string, args []string) resp.Value {
 	session := e.GetClientSession(connID)
 
 	// Authentication check
-	if e.Password != "" && !session.Authenticated {
+	if e.Password != "" && !session.Authenticated && connID != "replica_stream" && connID != "aof_replay" && connID != "" {
 		if cmdName != "AUTH" && cmdName != "QUIT" {
 			return resp.Error("NOAUTH Authentication required.")
 		}
 	}
 
 	// ACL Permission check
-	if session.Authenticated && e.ACL != nil && cmdName != "AUTH" && cmdName != "QUIT" {
+	if session.Authenticated && e.ACL != nil && cmdName != "AUTH" && cmdName != "QUIT" && connID != "replica_stream" && connID != "aof_replay" && connID != "" {
 		keys := extractCommandKeys(cmdName, args[1:])
 		if ok, reason := e.ACL.CanExecute(session.Username, cmdName, keys); !ok {
 			return resp.Error(fmt.Sprintf("NOPERM %s", reason))
@@ -246,7 +246,7 @@ func isWriteCommand(cmd string) bool {
 		"LPUSH", "RPUSH", "LPOP", "RPOP", "LSET", "LTRIM",
 		"SADD", "SREM", "SPOP",
 		"ZADD", "ZREM", "ZINCRBY", "ZREMRANGEBYSCORE",
-		"VADD", "FLUSHDB", "FLUSHALL", "XADD":
+		"VADD", "FLUSHDB", "FLUSHALL", "XADD", "XDEL", "XTRIM", "XGROUP", "XACK":
 		return true
 	default:
 		return false
@@ -1088,6 +1088,9 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 	case "XRANGE":
 		return e.handleXRange(args)
 
+	case "XREVRANGE":
+		return e.handleXRevRange(args)
+
 	case "XLEN":
 		if len(args) < 1 {
 			return resp.Error("ERR wrong number of arguments for 'xlen' command"), false
@@ -1097,6 +1100,30 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 			return resp.Integer(0), false
 		}
 		return resp.Integer(entry.Value.(*datastruct.Stream).Len()), false
+
+	case "XDEL":
+		return e.handleXDel(args)
+
+	case "XTRIM":
+		return e.handleXTrim(args)
+
+	case "XREAD":
+		return e.handleXRead(args)
+
+	case "XGROUP":
+		return e.handleXGroup(args)
+
+	case "XREADGROUP":
+		return e.handleXReadGroup(args)
+
+	case "XACK":
+		return e.handleXAck(args)
+
+	case "XPENDING":
+		return e.handleXPending(args)
+
+	case "XINFO":
+		return e.handleXInfo(args)
 
 	// ================= AI Vector Commands (Next-Gen) =================
 	case "VADD":
@@ -1346,11 +1373,39 @@ func (e *Engine) handleZRange(args []string, reverse bool) (resp.Value, bool) {
 }
 
 func (e *Engine) handleXAdd(args []string) (resp.Value, bool) {
-	if len(args) < 4 || (len(args)-2)%2 != 0 {
+	if len(args) < 4 {
 		return resp.Error("ERR wrong number of arguments for 'xadd' command"), false
 	}
 	key := args[0]
-	idArg := args[1]
+	idx := 1
+	var maxlen int64 = -1
+
+	if strings.ToUpper(args[idx]) == "MAXLEN" {
+		idx++
+		if idx < len(args) && args[idx] == "~" {
+			idx++
+		}
+		if idx >= len(args) {
+			return resp.Error("ERR syntax error"), false
+		}
+		ml, err := strconv.ParseInt(args[idx], 10, 64)
+		if err != nil {
+			return resp.Error("ERR value is not an integer or out of range"), false
+		}
+		maxlen = ml
+		idx++
+	}
+
+	if idx >= len(args) {
+		return resp.Error("ERR wrong number of arguments for 'xadd' command"), false
+	}
+	idArg := args[idx]
+	idx++
+
+	fieldsList := args[idx:]
+	if len(fieldsList) == 0 || len(fieldsList)%2 != 0 {
+		return resp.Error("ERR wrong number of arguments for 'xadd' command"), false
+	}
 
 	entry, ok := e.Keyspace.Get(key)
 	var s *datastruct.Stream
@@ -1365,10 +1420,10 @@ func (e *Engine) handleXAdd(args []string) (resp.Value, bool) {
 	}
 
 	fields := make(map[string]string)
-	order := make([]string, 0, (len(args)-2)/2)
-	for i := 2; i < len(args); i += 2 {
-		f := args[i]
-		v := args[i+1]
+	order := make([]string, 0, len(fieldsList)/2)
+	for i := 0; i < len(fieldsList); i += 2 {
+		f := fieldsList[i]
+		v := fieldsList[i+1]
 		fields[f] = v
 		order = append(order, f)
 	}
@@ -1376,6 +1431,10 @@ func (e *Engine) handleXAdd(args []string) (resp.Value, bool) {
 	assignedID, err := s.Add(idArg, fields, order)
 	if err != nil {
 		return resp.Error(err.Error()), false
+	}
+
+	if maxlen >= 0 {
+		s.Trim(maxlen)
 	}
 
 	return resp.BulkString(assignedID), true
@@ -1418,6 +1477,662 @@ func (e *Engine) handleXRange(args []string) (resp.Value, bool) {
 	}
 
 	return resp.Array(results), false
+}
+
+func (e *Engine) handleXRevRange(args []string) (resp.Value, bool) {
+	if len(args) < 3 {
+		return resp.Error("ERR wrong number of arguments for 'xrevrange' command"), false
+	}
+	key := args[0]
+	end := args[1]
+	start := args[2]
+
+	var count int64 = -1
+	if len(args) >= 5 && strings.ToUpper(args[3]) == "COUNT" {
+		c, err := strconv.ParseInt(args[4], 10, 64)
+		if err == nil {
+			count = c
+		}
+	}
+
+	entry, ok := e.Keyspace.Get(key)
+	if !ok || entry.Type != TypeStream {
+		return resp.Array([]resp.Value{}), false
+	}
+
+	s := entry.Value.(*datastruct.Stream)
+	entries := s.RevRange(end, start, count)
+
+	results := make([]resp.Value, len(entries))
+	for i, en := range entries {
+		fieldPairs := make([]resp.Value, 0, len(en.Order)*2)
+		for _, f := range en.Order {
+			fieldPairs = append(fieldPairs, resp.BulkString(f), resp.BulkString(en.Fields[f]))
+		}
+		results[i] = resp.Array([]resp.Value{
+			resp.BulkString(en.ID),
+			resp.Array(fieldPairs),
+		})
+	}
+
+	return resp.Array(results), false
+}
+
+func (e *Engine) handleXDel(args []string) (resp.Value, bool) {
+	if len(args) < 2 {
+		return resp.Error("ERR wrong number of arguments for 'xdel' command"), false
+	}
+	key := args[0]
+	ids := args[1:]
+
+	entry, ok := e.Keyspace.Get(key)
+	if !ok || entry.Type != TypeStream {
+		return resp.Integer(0), false
+	}
+
+	s := entry.Value.(*datastruct.Stream)
+	deleted := s.Delete(ids)
+	return resp.Integer(deleted), true
+}
+
+func (e *Engine) handleXTrim(args []string) (resp.Value, bool) {
+	if len(args) < 3 {
+		return resp.Error("ERR wrong number of arguments for 'xtrim' command"), false
+	}
+	key := args[0]
+	if strings.ToUpper(args[1]) != "MAXLEN" {
+		return resp.Error("ERR syntax error, expected MAXLEN"), false
+	}
+	countIdx := 2
+	if countIdx < len(args) && args[countIdx] == "~" {
+		countIdx = 3
+	}
+	if countIdx >= len(args) {
+		return resp.Error("ERR syntax error"), false
+	}
+	count, err := strconv.ParseInt(args[countIdx], 10, 64)
+	if err != nil {
+		return resp.Error("ERR value is not an integer or out of range"), false
+	}
+
+	entry, ok := e.Keyspace.Get(key)
+	if !ok || entry.Type != TypeStream {
+		return resp.Integer(0), false
+	}
+
+	s := entry.Value.(*datastruct.Stream)
+	evicted := s.Trim(count)
+	return resp.Integer(evicted), true
+}
+
+func (e *Engine) handleXRead(args []string) (resp.Value, bool) {
+	var count int64 = -1
+	var blockMs int64 = -1
+	streamsIdx := -1
+
+	for i := 0; i < len(args); i++ {
+		upper := strings.ToUpper(args[i])
+		if upper == "COUNT" && i+1 < len(args) {
+			c, err := strconv.ParseInt(args[i+1], 10, 64)
+			if err == nil {
+				count = c
+			}
+			i++
+		} else if upper == "BLOCK" && i+1 < len(args) {
+			b, err := strconv.ParseInt(args[i+1], 10, 64)
+			if err == nil {
+				blockMs = b
+			}
+			i++
+		} else if upper == "STREAMS" {
+			streamsIdx = i + 1
+			break
+		}
+	}
+
+	if streamsIdx == -1 {
+		return resp.Error("ERR syntax error, missing STREAMS in 'xread'"), false
+	}
+
+	remaining := args[streamsIdx:]
+	if len(remaining) < 2 || len(remaining)%2 != 0 {
+		return resp.Error("ERR Unbalanced XREAD list of streams: for each stream key an ID must be specified"), false
+	}
+
+	numStreams := len(remaining) / 2
+	keys := remaining[:numStreams]
+	ids := remaining[numStreams:]
+
+	actualIDs := make([]string, len(ids))
+	for idx, id := range ids {
+		if id == "$" {
+			entry, ok := e.Keyspace.Get(keys[idx])
+			if ok && entry.Type == TypeStream {
+				actualIDs[idx] = entry.Value.(*datastruct.Stream).LastID()
+			} else {
+				actualIDs[idx] = "0-0"
+			}
+		} else {
+			actualIDs[idx] = id
+		}
+	}
+
+	readOnce := func() []resp.Value {
+		var streamResults []resp.Value
+		for idx, key := range keys {
+			lastID := actualIDs[idx]
+			entry, ok := e.Keyspace.Get(key)
+			if !ok || entry.Type != TypeStream {
+				continue
+			}
+			s := entry.Value.(*datastruct.Stream)
+			entries := s.Read(lastID, count)
+			if len(entries) == 0 {
+				continue
+			}
+
+			entryValues := make([]resp.Value, len(entries))
+			for i, en := range entries {
+				fieldPairs := make([]resp.Value, 0, len(en.Order)*2)
+				for _, f := range en.Order {
+					fieldPairs = append(fieldPairs, resp.BulkString(f), resp.BulkString(en.Fields[f]))
+				}
+				entryValues[i] = resp.Array([]resp.Value{
+					resp.BulkString(en.ID),
+					resp.Array(fieldPairs),
+				})
+			}
+
+			streamResults = append(streamResults, resp.Array([]resp.Value{
+				resp.BulkString(key),
+				resp.Array(entryValues),
+			}))
+		}
+		return streamResults
+	}
+
+	results := readOnce()
+	if len(results) > 0 || blockMs < 0 {
+		if len(results) == 0 {
+			return resp.NullArray(), false
+		}
+		return resp.Array(results), false
+	}
+
+	var deadline time.Time
+	if blockMs > 0 {
+		deadline = time.Now().Add(time.Duration(blockMs) * time.Millisecond)
+	}
+
+	for {
+		var cancelFuncs []func()
+		var waitChannels []<-chan struct{}
+
+		for _, key := range keys {
+			entry, ok := e.Keyspace.Get(key)
+			if ok && entry.Type == TypeStream {
+				s := entry.Value.(*datastruct.Stream)
+				ch, cancel := s.RegisterWaiter()
+				waitChannels = append(waitChannels, ch)
+				cancelFuncs = append(cancelFuncs, cancel)
+			}
+		}
+
+		selectTriggered := false
+		if len(waitChannels) > 0 {
+			for _, ch := range waitChannels {
+				select {
+				case <-ch:
+					selectTriggered = true
+				default:
+				}
+			}
+		}
+
+		if !selectTriggered {
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		for _, c := range cancelFuncs {
+			c()
+		}
+
+		results = readOnce()
+		if len(results) > 0 {
+			return resp.Array(results), false
+		}
+
+		if blockMs > 0 && time.Now().After(deadline) {
+			return resp.NullArray(), false
+		}
+	}
+}
+
+func (e *Engine) handleXGroup(args []string) (resp.Value, bool) {
+	if len(args) < 2 {
+		return resp.Error("ERR wrong number of arguments for 'xgroup' command"), false
+	}
+	subCmd := strings.ToUpper(args[0])
+
+	switch subCmd {
+	case "CREATE":
+		if len(args) < 4 {
+			return resp.Error("ERR wrong number of arguments for 'xgroup create' command"), false
+		}
+		key := args[1]
+		group := args[2]
+		id := args[3]
+		mkstream := false
+		if len(args) >= 5 && strings.ToUpper(args[4]) == "MKSTREAM" {
+			mkstream = true
+		}
+
+		entry, ok := e.Keyspace.Get(key)
+		var s *datastruct.Stream
+		if !ok {
+			if !mkstream {
+				return resp.Error("ERR The XGROUP subcommand requires the key to exist. Note that for CREATE you can specify MKSTREAM to create an empty stream automatically."), false
+			}
+			s = datastruct.NewStream()
+			e.Keyspace.Set(key, &Entry{Type: TypeStream, Value: s})
+		} else {
+			if entry.Type != TypeStream {
+				return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
+			}
+			s = entry.Value.(*datastruct.Stream)
+		}
+
+		err := s.CreateGroup(group, id)
+		if err != nil {
+			return resp.Error(err.Error()), false
+		}
+		return resp.SimpleString("OK"), true
+
+	case "DESTROY":
+		if len(args) < 3 {
+			return resp.Error("ERR wrong number of arguments for 'xgroup destroy' command"), false
+		}
+		key := args[1]
+		group := args[2]
+		entry, ok := e.Keyspace.Get(key)
+		if !ok || entry.Type != TypeStream {
+			return resp.Integer(0), false
+		}
+		s := entry.Value.(*datastruct.Stream)
+		destroyed := s.DestroyGroup(group)
+		if destroyed {
+			return resp.Integer(1), true
+		}
+		return resp.Integer(0), false
+
+	case "SETID":
+		if len(args) < 4 {
+			return resp.Error("ERR wrong number of arguments for 'xgroup setid' command"), false
+		}
+		key := args[1]
+		group := args[2]
+		id := args[3]
+		entry, ok := e.Keyspace.Get(key)
+		if !ok || entry.Type != TypeStream {
+			return resp.Error("ERR no such key"), false
+		}
+		s := entry.Value.(*datastruct.Stream)
+		if err := s.SetGroupID(group, id); err != nil {
+			return resp.Error(err.Error()), false
+		}
+		return resp.SimpleString("OK"), true
+
+	case "DELCONSUMER":
+		if len(args) < 4 {
+			return resp.Error("ERR wrong number of arguments for 'xgroup delconsumer' command"), false
+		}
+		key := args[1]
+		group := args[2]
+		consumer := args[3]
+		entry, ok := e.Keyspace.Get(key)
+		if !ok || entry.Type != TypeStream {
+			return resp.Integer(0), false
+		}
+		s := entry.Value.(*datastruct.Stream)
+		pelCount := s.DeleteConsumer(group, consumer)
+		return resp.Integer(pelCount), true
+
+	default:
+		return resp.Error(fmt.Sprintf("ERR unknown XGROUP subcommand '%s'", subCmd)), false
+	}
+}
+
+func (e *Engine) handleXReadGroup(args []string) (resp.Value, bool) {
+	if len(args) < 6 || strings.ToUpper(args[0]) != "GROUP" {
+		return resp.Error("ERR syntax error, expected XREADGROUP GROUP <group> <consumer> ..."), false
+	}
+	group := args[1]
+	consumer := args[2]
+
+	var count int64 = -1
+	var blockMs int64 = -1
+	noAck := false
+	streamsIdx := -1
+
+	for i := 3; i < len(args); i++ {
+		upper := strings.ToUpper(args[i])
+		if upper == "COUNT" && i+1 < len(args) {
+			c, err := strconv.ParseInt(args[i+1], 10, 64)
+			if err == nil {
+				count = c
+			}
+			i++
+		} else if upper == "BLOCK" && i+1 < len(args) {
+			b, err := strconv.ParseInt(args[i+1], 10, 64)
+			if err == nil {
+				blockMs = b
+			}
+			i++
+		} else if upper == "NOACK" {
+			noAck = true
+		} else if upper == "STREAMS" {
+			streamsIdx = i + 1
+			break
+		}
+	}
+
+	if streamsIdx == -1 {
+		return resp.Error("ERR syntax error, missing STREAMS in 'xreadgroup'"), false
+	}
+
+	remaining := args[streamsIdx:]
+	if len(remaining) < 2 || len(remaining)%2 != 0 {
+		return resp.Error("ERR Unbalanced XREADGROUP list of streams"), false
+	}
+
+	numStreams := len(remaining) / 2
+	keys := remaining[:numStreams]
+	ids := remaining[numStreams:]
+
+	readOnce := func() ([]resp.Value, error) {
+		var streamResults []resp.Value
+		for idx, key := range keys {
+			id := ids[idx]
+			entry, ok := e.Keyspace.Get(key)
+			if !ok || entry.Type != TypeStream {
+				continue
+			}
+			s := entry.Value.(*datastruct.Stream)
+			entries, err := s.ReadGroup(group, consumer, id, count, noAck)
+			if err != nil {
+				return nil, err
+			}
+			if len(entries) == 0 {
+				continue
+			}
+
+			entryValues := make([]resp.Value, len(entries))
+			for i, en := range entries {
+				fieldPairs := make([]resp.Value, 0, len(en.Order)*2)
+				for _, f := range en.Order {
+					fieldPairs = append(fieldPairs, resp.BulkString(f), resp.BulkString(en.Fields[f]))
+				}
+				entryValues[i] = resp.Array([]resp.Value{
+					resp.BulkString(en.ID),
+					resp.Array(fieldPairs),
+				})
+			}
+
+			streamResults = append(streamResults, resp.Array([]resp.Value{
+				resp.BulkString(key),
+				resp.Array(entryValues),
+			}))
+		}
+		return streamResults, nil
+	}
+
+	results, err := readOnce()
+	if err != nil {
+		return resp.Error(err.Error()), false
+	}
+	if len(results) > 0 || blockMs < 0 {
+		if len(results) == 0 {
+			return resp.NullArray(), false
+		}
+		return resp.Array(results), false
+	}
+
+	var deadline time.Time
+	if blockMs > 0 {
+		deadline = time.Now().Add(time.Duration(blockMs) * time.Millisecond)
+	}
+
+	for {
+		var cancelFuncs []func()
+		var waitChannels []<-chan struct{}
+
+		for _, key := range keys {
+			entry, ok := e.Keyspace.Get(key)
+			if ok && entry.Type == TypeStream {
+				s := entry.Value.(*datastruct.Stream)
+				ch, cancel := s.RegisterWaiter()
+				waitChannels = append(waitChannels, ch)
+				cancelFuncs = append(cancelFuncs, cancel)
+			}
+		}
+
+		selectTriggered := false
+		if len(waitChannels) > 0 {
+			for _, ch := range waitChannels {
+				select {
+				case <-ch:
+					selectTriggered = true
+				default:
+				}
+			}
+		}
+
+		if !selectTriggered {
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		for _, c := range cancelFuncs {
+			c()
+		}
+
+		results, err = readOnce()
+		if err != nil {
+			return resp.Error(err.Error()), false
+		}
+		if len(results) > 0 {
+			return resp.Array(results), false
+		}
+
+		if blockMs > 0 && time.Now().After(deadline) {
+			return resp.NullArray(), false
+		}
+	}
+}
+
+func (e *Engine) handleXAck(args []string) (resp.Value, bool) {
+	if len(args) < 3 {
+		return resp.Error("ERR wrong number of arguments for 'xack' command"), false
+	}
+	key := args[0]
+	group := args[1]
+	ids := args[2:]
+
+	entry, ok := e.Keyspace.Get(key)
+	if !ok || entry.Type != TypeStream {
+		return resp.Integer(0), false
+	}
+
+	s := entry.Value.(*datastruct.Stream)
+	acked := s.Ack(group, ids)
+	return resp.Integer(acked), true
+}
+
+func (e *Engine) handleXPending(args []string) (resp.Value, bool) {
+	if len(args) < 2 {
+		return resp.Error("ERR wrong number of arguments for 'xpending' command"), false
+	}
+	key := args[0]
+	group := args[1]
+
+	entry, ok := e.Keyspace.Get(key)
+	if !ok || entry.Type != TypeStream {
+		return resp.Error("ERR no such key"), false
+	}
+	s := entry.Value.(*datastruct.Stream)
+
+	if len(args) == 2 {
+		total, minID, maxID, counts, err := s.GetPendingSummary(group)
+		if err != nil {
+			return resp.Error(err.Error()), false
+		}
+		if total == 0 {
+			return resp.Array([]resp.Value{
+				resp.Integer(0),
+				resp.Null(),
+				resp.Null(),
+				resp.Null(),
+			}), false
+		}
+
+		var consumerVals []resp.Value
+		for cName, cCount := range counts {
+			consumerVals = append(consumerVals, resp.Array([]resp.Value{
+				resp.BulkString(cName),
+				resp.Integer(cCount),
+			}))
+		}
+
+		return resp.Array([]resp.Value{
+			resp.Integer(total),
+			resp.BulkString(minID),
+			resp.BulkString(maxID),
+			resp.Array(consumerVals),
+		}), false
+	}
+
+	idx := 2
+	var minIdle time.Duration
+	if idx < len(args) && strings.ToUpper(args[idx]) == "IDLE" {
+		if idx+1 >= len(args) {
+			return resp.Error("ERR syntax error"), false
+		}
+		ms, err := strconv.ParseInt(args[idx+1], 10, 64)
+		if err != nil {
+			return resp.Error("ERR value is not an integer or out of range"), false
+		}
+		minIdle = time.Duration(ms) * time.Millisecond
+		idx += 2
+	}
+
+	if idx+2 >= len(args) {
+		return resp.Error("ERR wrong number of arguments for 'xpending' detailed command"), false
+	}
+	start := args[idx]
+	end := args[idx+1]
+	count, err := strconv.ParseInt(args[idx+2], 10, 64)
+	if err != nil {
+		return resp.Error("ERR value is not an integer or out of range"), false
+	}
+	idx += 3
+
+	consumerFilter := ""
+	if idx < len(args) {
+		consumerFilter = args[idx]
+	}
+
+	detailed, err := s.GetPendingDetailed(group, start, end, count, consumerFilter, minIdle)
+	if err != nil {
+		return resp.Error(err.Error()), false
+	}
+
+	now := time.Now()
+	res := make([]resp.Value, len(detailed))
+	for i, pe := range detailed {
+		idleMs := now.Sub(pe.DeliveryTime).Milliseconds()
+		if idleMs < 0 {
+			idleMs = 0
+		}
+		res[i] = resp.Array([]resp.Value{
+			resp.BulkString(pe.ID),
+			resp.BulkString(pe.ConsumerName),
+			resp.Integer(idleMs),
+			resp.Integer(pe.DeliveryCount),
+		})
+	}
+	return resp.Array(res), false
+}
+
+func (e *Engine) handleXInfo(args []string) (resp.Value, bool) {
+	if len(args) < 2 {
+		return resp.Error("ERR wrong number of arguments for 'xinfo' command"), false
+	}
+	subCmd := strings.ToUpper(args[0])
+	key := args[1]
+
+	entry, ok := e.Keyspace.Get(key)
+	if !ok || entry.Type != TypeStream {
+		return resp.Error("ERR no such key"), false
+	}
+	s := entry.Value.(*datastruct.Stream)
+
+	switch subCmd {
+	case "STREAM":
+		entries := s.Range("-", "+", 1)
+		firstID := resp.Null()
+		if len(entries) > 0 {
+			firstID = resp.BulkString(entries[0].ID)
+		}
+		lastID := resp.Null()
+		if s.Len() > 0 {
+			lastID = resp.BulkString(s.LastID())
+		}
+		groups := s.GetGroupsInfo()
+
+		return resp.Array([]resp.Value{
+			resp.BulkString("length"), resp.Integer(s.Len()),
+			resp.BulkString("radix-tree-keys"), resp.Integer(s.Len()),
+			resp.BulkString("radix-tree-nodes"), resp.Integer(1),
+			resp.BulkString("last-generated-id"), lastID,
+			resp.BulkString("groups"), resp.Integer(int64(len(groups))),
+			resp.BulkString("first-entry"), firstID,
+			resp.BulkString("last-entry"), lastID,
+		}), false
+
+	case "GROUPS":
+		groups := s.GetGroupsInfo()
+		res := make([]resp.Value, len(groups))
+		for i, g := range groups {
+			res[i] = resp.Array([]resp.Value{
+				resp.BulkString("name"), resp.BulkString(g["name"].(string)),
+				resp.BulkString("consumers"), resp.Integer(int64(g["consumers"].(int))),
+				resp.BulkString("pending"), resp.Integer(int64(g["pending"].(int))),
+				resp.BulkString("last-delivered-id"), resp.BulkString(g["last-delivered-id"].(string)),
+			})
+		}
+		return resp.Array(res), false
+
+	case "CONSUMERS":
+		if len(args) < 3 {
+			return resp.Error("ERR wrong number of arguments for 'xinfo consumers' command"), false
+		}
+		group := args[2]
+		consumers, err := s.GetConsumersInfo(group)
+		if err != nil {
+			return resp.Error(err.Error()), false
+		}
+		res := make([]resp.Value, len(consumers))
+		for i, c := range consumers {
+			res[i] = resp.Array([]resp.Value{
+				resp.BulkString("name"), resp.BulkString(c["name"].(string)),
+				resp.BulkString("pending"), resp.Integer(int64(c["pending"].(int))),
+				resp.BulkString("idle"), resp.Integer(c["idle"].(int64)),
+			})
+		}
+		return resp.Array(res), false
+
+	default:
+		return resp.Error(fmt.Sprintf("ERR unknown XINFO subcommand '%s'", subCmd)), false
+	}
 }
 
 // VADD key id f1 f2 ... fn
