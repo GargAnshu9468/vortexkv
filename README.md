@@ -224,3 +224,10 @@ redis-benchmark -p 7379 -a "vortex_secure_2026" -t set,get -n 50000 -q -c 50
 ```
 - **SET**: `190,114 requests/sec` | `p50: 0.143ms`
 - **GET**: `210,970 requests/sec` | `p50: 0.135ms`
+
+---
+
+## 📄 License
+
+VortexKV is open-source software released under the [MIT License](LICENSE).
+Copyright © 2026 Anshu Garg.
