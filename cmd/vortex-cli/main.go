@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,7 +19,7 @@ func main() {
 	authPass := flag.String("a", "", "Password for authentication")
 	flag.Parse()
 
-	addr := fmt.Sprintf("%s:%d", *host, *port)
+	addr := net.JoinHostPort(*host, strconv.Itoa(*port))
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		fmt.Printf("\033[31mCould not connect to VortexKV at %s: %v\033[0m\n", addr, err)
