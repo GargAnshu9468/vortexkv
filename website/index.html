@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VortexKV — Hyper-Performance Redis Alternative & In-Memory AI Vector Engine</title>
-  <meta name="description" content="Drop-in Redis alternative with 210,000+ ops/sec, lock-striped 64-shard concurrency, native AI vector search primitives, Prometheus telemetry, and an embedded cyberpunk visual command deck.">
-  <meta name="keywords" content="redis alternative, in-memory database, vector search, key-value store, golang cache, cyberpunk, high-performance">
+  <title>VortexKV — Hyper-Performance Redis Alternative, Streams, Clustering, Lua, Wasm & AI Vector Engine</title>
+  <meta name="description" content="Drop-in Redis alternative with 210,000+ ops/sec, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.">
+  <meta name="keywords" content="redis alternative, in-memory database, redis streams, cluster gossip, lua scripting, wasm, webassembly, kubernetes operator, vector search, hnsw, key-value store, golang cache, cyberpunk, high-performance">
 
   <!-- OpenGraph / Social Meta -->
-  <meta property="og:title" content="VortexKV — Hyper-Performance In-Memory Data Store & Studio">
-  <meta property="og:description" content="Drop-in Redis compatible, 210k+ ops/sec, native AI vector primitives, and embedded visual studio.">
+  <meta property="og:title" content="VortexKV — Hyper-Performance In-Memory Data Store, Streams, Clustering & Studio">
+  <meta property="og:description" content="Drop-in Redis compatible, 210k+ ops/sec, Redis Streams, cluster gossip bus, Lua 5.1, Wasm runtime, K8s operator, AI vector primitives, and embedded visual studio.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://garganshu9468.github.io/vortexkv/">
 
@@ -50,7 +50,7 @@
     <div class="container">
       <div class="badge-pill">
         <span class="badge-dot"></span>
-        <span>v1.0.0-PROD RELEASED • DROP-IN REDIS PROTOCOL</span>
+        <span>v1.0.0-PROD • STREAMS • CLUSTERS • LUA 5.1 • WASM • K8S OPERATOR</span>
       </div>
 
       <h1 class="hero-title">
@@ -59,7 +59,7 @@
       </h1>
 
       <p class="hero-subtitle">
-        Engineered with 64 lock-striped shards, sub-millisecond latencies, native high-dimensional vector search, and a cyberpunk command studio. Drop-in compatible with standard Redis clients.
+        Engineered with 64 lock-striped shards, sub-millisecond latencies, native AI vector search, Redis Streams, cluster gossip bus, embedded Lua 5.1, Wasm runtime, and an automated K8s operator. Drop-in compatible with standard Redis clients.
       </p>
 
       <!-- 1-Click Quick Installer Box -->
@@ -68,6 +68,7 @@
           <button class="inst-tab active" data-target="curl">cURL | Bash</button>
           <button class="inst-tab" data-target="docker">Docker</button>
           <button class="inst-tab" data-target="helm">Helm (K8s)</button>
+          <button class="inst-tab" data-target="operator">Operator (K8s)</button>
           <button class="inst-tab" data-target="source">Source</button>
         </div>
         <div class="installer-code-row">
@@ -90,7 +91,7 @@
       <div class="section-header">
         <div class="section-tag">Interactive Sandbox</div>
         <h2 class="section-title">Test VortexKV in Your Browser</h2>
-        <p class="section-desc">Run commands against a client-side in-memory simulator with real-time vector cosine calculations. No installation required.</p>
+        <p class="section-desc">Run commands against a client-side in-memory simulator with real-time vector cosine calculations, streams, and cluster topology. No installation required.</p>
       </div>
 
       <div class="terminal-deck">
@@ -111,7 +112,7 @@
           </div>
           <div class="term-input-row">
             <span class="term-prompt">vortex:&gt;</span>
-            <input type="text" class="term-input" id="termInput" placeholder="Type a command (e.g., SET user:1 'Nova', or VSEARCH articles 1 cosine 0.9 0.1 0.0)" autofocus autocomplete="off" spellcheck="false">
+            <input type="text" class="term-input" id="termInput" placeholder="Type a command (e.g., SET user:1 'Nova', XADD events * user 'Alice', or WASM LIST)" autofocus autocomplete="off" spellcheck="false">
           </div>
         </div>
 
@@ -119,8 +120,11 @@
           <span class="preset-label">Quick Try:</span>
           <button class="preset-chip" data-cmd="SET session:100 'CyberVortex'">SET Key</button>
           <button class="preset-chip" data-cmd="GET session:100">GET Key</button>
-          <button class="preset-chip" data-cmd="KEYS *">KEYS *</button>
-          <button class="preset-chip" data-cmd="HGETALL user:101">HGETALL</button>
+          <button class="preset-chip" data-cmd="XADD events * user 'Alice' action 'login'">XADD Stream</button>
+          <button class="preset-chip" data-cmd="XRANGE events - +">XRANGE Stream</button>
+          <button class="preset-chip" data-cmd="EVAL &quot;return redis.call('get', KEYS[1])&quot; 1 session:100">EVAL Lua</button>
+          <button class="preset-chip" data-cmd="WASM LIST">WASM LIST</button>
+          <button class="preset-chip" data-cmd="CLUSTER NODES">CLUSTER NODES</button>
           <button class="preset-chip" data-cmd="VSEARCH articles 2 cosine 0.90 0.12 0.08">AI VSEARCH</button>
           <button class="preset-chip" data-cmd="INFO">INFO Stats</button>
         </div>
@@ -236,19 +240,61 @@
         <div class="feature-card">
           <div class="feature-icon">🧠</div>
           <h3 class="feature-title">Native AI Vector Primitives</h3>
-          <p class="feature-desc">Store embeddings and perform nearest-neighbor searches (VADD, VSEARCH, VSIM) right inside the KV store without heavy vector DB plugins.</p>
+          <p class="feature-desc">Store embeddings and perform nearest-neighbor searches (VADD, VSEARCH, VSIM) right inside the KV store with HNSW skip-graphs without heavy vector DB plugins.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🌊</div>
+          <h3 class="feature-title">Redis Streams & Consumer Groups</h3>
+          <p class="feature-desc">High-throughput event streaming with consumer groups, automatic Pending Entries List (PEL) tracking, zero-CPU blocking reads, and 1-click XACK.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📡</div>
+          <h3 class="feature-title">Cluster Gossip Bus & Auto-Failover</h3>
+          <p class="feature-desc">16,384 CRC16 hash slots with dedicated binary heartbeat bus on port 17379, autonomous PFAIL/FAIL consensus, and instant replica election without human intervention.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚖️</div>
+          <h3 class="feature-title">Automated Cluster Slot Rebalancer</h3>
+          <p class="feature-desc">Native CLI tool (vortex-cli cluster rebalance --auto) calculating minimal migration diffs and automating live slot migrations across masters with zero downtime.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📜</div>
+          <h3 class="feature-title">Embedded Lua 5.1 Scripting</h3>
+          <p class="feature-desc">Sub-millisecond atomic scripts (EVAL, EVALSHA, SCRIPT LOAD) in pure Go with SHA1 caching, redis.call/pcall bridge, and 5-second runaway execution protection.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🔮</div>
+          <h3 class="feature-title">WebAssembly (Wasm) Engine</h3>
+          <p class="feature-desc">Pure-Go WebAssembly runtime powered by wazero (zero CGO) executing compiled Rust, Go, or C modules with direct keyspace bindings (vortex_get, vortex_set).</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">☸️</div>
+          <h3 class="feature-title">VortexKV Kubernetes Operator</h3>
+          <p class="feature-desc">Declarative CustomResourceDefinition (kind: VortexCluster) and Go controller managing automated pod lifecycle, slot partitioning, and dynamic scale-out on K8s.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <h3 class="feature-title">Dual Persistence (AOF + Binary RDB)</h3>
+          <p class="feature-desc">Standard REDIS0009 point-in-time binary snapshots (SAVE, BGSAVE) with 64-bit CRC64 checksums alongside Append-Only File (AOF) durability with fsync policies.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🔁</div>
+          <h3 class="feature-title">Master-Replica Asynchronous Replication</h3>
+          <p class="feature-desc">Redis 6+ compatible PSYNC, REPLCONF, and REPLICAOF for horizontal read scaling, live command streaming, and instant failover (REPLICAOF NO ONE).</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon">🌌</div>
           <h3 class="feature-title">Embedded Visual Studio</h3>
           <p class="feature-desc">Single self-contained binary includes a rich cyberpunk command deck (port 7380) with 2D/3D force-directed galaxy visualization and real-time slowlog stream.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">🔌</div>
-          <h3 class="feature-title">Zero Port Collisions</h3>
-          <p class="feature-desc">Listens on dedicated ports 7379 (wire) and 7380 (deck), allowing VortexKV to run alongside existing Redis instances without collision.</p>
         </div>
 
         <div class="feature-card">
@@ -261,6 +307,12 @@
           <div class="feature-icon">👥</div>
           <h3 class="feature-title">Multi-User ACL & Namespaces</h3>
           <p class="feature-desc">Redis 6+ ACL wire protocol with key namespace restrictions (~cache:*, ~orders:*), roles (admin, readwrite, readonly), and visual user management.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🔌</div>
+          <h3 class="feature-title">Zero Port Collisions</h3>
+          <p class="feature-desc">Listens on dedicated ports 7379 (wire) and 7380 (deck), allowing VortexKV to run alongside existing Redis instances without collision.</p>
         </div>
       </div>
     </div>

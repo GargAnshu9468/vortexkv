@@ -13,6 +13,7 @@ class VortexSimulator {
     // Seed realistic initial data
     this.store.set("app:name", { type: "string", value: "VortexKV Production" });
     this.store.set("app:version", { type: "string", value: "1.0.0-PROD" });
+    this.store.set("session:100", { type: "string", value: "CyberVortex" });
     this.store.set("user:101", { type: "hash", value: { name: "Alice Vance", role: "admin", org: "CyberDyne" } });
 
     // Seed vector index "articles"
@@ -21,6 +22,14 @@ class VortexSimulator {
     articleVecs.set("doc_quantum", [0.12, 0.94, 0.20]);
     articleVecs.set("doc_crypto", [0.30, 0.25, 0.90]);
     this.vectors.set("articles", articleVecs);
+
+    // Seed Streams
+    this.streams = new Map();
+    const eventStream = [
+      { id: "1726150000000-0", fields: { user: "Alice", action: "login", ip: "192.168.1.5" } },
+      { id: "1726150005000-0", fields: { user: "Bob", action: "checkout", amount: "$149.00" } }
+    ];
+    this.streams.set("events", eventStream);
   }
 
   cosineSimilarity(a, b) {
@@ -179,6 +188,148 @@ class VortexSimulator {
         return { type: "val", lines };
       }
 
+      // Redis Streams Primitives
+      case "XADD": {
+        if (args.length < 4 || (args.length - 2) % 2 !== 0) {
+          return { type: "err", text: "(error) ERR syntax: XADD <stream> <ID|*> <field> <value> [field value...]" };
+        }
+        const streamKey = args[0];
+        let id = args[1];
+        if (id === "*") {
+          id = `${Date.now()}-${Math.floor(Math.random() * 10)}`;
+        }
+        const fields = {};
+        for (let i = 2; i < args.length; i += 2) {
+          fields[args[i]] = args[i + 1];
+        }
+        if (!this.streams.has(streamKey)) {
+          this.streams.set(streamKey, []);
+        }
+        this.streams.get(streamKey).push({ id, fields });
+        return { type: "val", text: `"${id}"` };
+      }
+
+      case "XRANGE": {
+        if (args.length < 3) return { type: "err", text: "(error) ERR syntax: XRANGE <stream> <start> <end> [COUNT count]" };
+        const streamKey = args[0];
+        const entries = this.streams.get(streamKey);
+        if (!entries || entries.length === 0) return { type: "dim", text: "(empty array)" };
+        const lines = [];
+        let itemNum = 1;
+        entries.forEach(entry => {
+          lines.push(`${itemNum}) 1) "${entry.id}"`);
+          lines.push(`   2)`);
+          let fIdx = 1;
+          for (const [k, v] of Object.entries(entry.fields)) {
+            lines.push(`      ${fIdx++}) "${k}"`);
+            lines.push(`      ${fIdx++}) "${v}"`);
+          }
+          itemNum++;
+        });
+        return { type: "val", lines };
+      }
+
+      case "XLEN": {
+        if (args.length < 1) return { type: "err", text: "(error) ERR wrong number of arguments for 'xlen' command" };
+        const streamKey = args[0];
+        const entries = this.streams.get(streamKey) || [];
+        return { type: "val", text: `(integer) ${entries.length}` };
+      }
+
+      // Embedded Lua 5.1 Scripting
+      case "EVAL": {
+        if (args.length < 2) return { type: "err", text: "(error) ERR wrong number of arguments for 'eval' command" };
+        const script = args[0];
+        const numKeys = parseInt(args[1], 10) || 0;
+        const keys = args.slice(2, 2 + numKeys);
+        if (keys.length > 0) {
+          const target = this.store.get(keys[0]);
+          if (target && target.type === "string") {
+            return { type: "val", text: `"${target.value}"` };
+          }
+        }
+        return { type: "val", text: `(integer) 1` };
+      }
+
+      case "EVALSHA": {
+        if (args.length < 2) return { type: "err", text: "(error) ERR wrong number of arguments for 'evalsha' command" };
+        return { type: "val", text: `(integer) 1` };
+      }
+
+      case "SCRIPT": {
+        const sub = (args[0] || "").toUpperCase();
+        if (sub === "LOAD") {
+          return { type: "val", text: `"6b142468d20025f187a2d829fd240f92b0c360b8"` };
+        } else if (sub === "EXISTS") {
+          return { type: "val", lines: ["1) (integer) 1"] };
+        } else if (sub === "FLUSH") {
+          return { type: "ok", text: "OK" };
+        }
+        return { type: "ok", text: "OK" };
+      }
+
+      // WebAssembly (Wasm) Engine
+      case "WASM": {
+        const sub = (args[0] || "").toUpperCase();
+        if (sub === "LIST") {
+          return {
+            type: "val",
+            lines: [
+              "1) 1) \"name\"",
+              "   2) \"fast_hash_v1\"",
+              "   3) \"runtime\"",
+              "   4) \"wazero-pure-go\"",
+              "2) 1) \"name\"",
+              "   2) \"tensor_norm_v2\"",
+              "   3) \"runtime\"",
+              "   4) \"wazero-pure-go\""
+            ]
+          };
+        } else if (sub === "CALL") {
+          if (args.length < 2) return { type: "err", text: "(error) ERR syntax: WASM CALL <func_name> [args...]" };
+          return { type: "val", text: `"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"` };
+        } else if (sub === "LOAD") {
+          return { type: "ok", text: "OK (WebAssembly module compiled and instantiated via wazero)" };
+        }
+        return { type: "err", text: "(error) ERR unknown WASM subcommand, use LIST, CALL, LOAD, or DELETE" };
+      }
+
+      // Cluster & Gossip Bus
+      case "CLUSTER": {
+        const sub = (args[0] || "").toUpperCase();
+        if (sub === "NODES") {
+          return {
+            type: "val",
+            lines: [
+              "07c40f06 127.0.0.1:7379@17379 myself,master - 0 1726150000000 1 connected 0-5460",
+              "e4a8b712 127.0.0.1:7381@17381 master - 0 1726150000000 2 connected 5461-10922",
+              "9f3c1d45 127.0.0.1:7382@17382 master - 0 1726150000000 3 connected 10923-16383"
+            ]
+          };
+        } else if (sub === "SLOTS") {
+          return {
+            type: "val",
+            lines: [
+              "1) 1) (integer) 0",
+              "   2) (integer) 5460",
+              "   3) 1) \"127.0.0.1\"",
+              "      2) (integer) 7379",
+              "2) 1) (integer) 5461",
+              "   2) (integer) 10922",
+              "   3) 1) \"127.0.0.1\"",
+              "      2) (integer) 7381",
+              "3) 1) (integer) 10923",
+              "   2) (integer) 16383",
+              "   3) 1) \"127.0.0.1\"",
+              "      2) (integer) 7382"
+            ]
+          };
+        } else if (sub === "KEYSLOT") {
+          return { type: "val", text: `(integer) 7124` };
+        }
+        return { type: "ok", text: "OK" };
+      }
+
       case "INFO": {
         const uptime = Math.floor((Date.now() - this.bootTime) / 1000);
         return {
@@ -215,6 +366,11 @@ class VortexSimulator {
             "  • KEYS *                 : List all keys in keyspace",
             "  • HSET key field value   : Store a field in a hash",
             "  • HGETALL key            : Retrieve all fields from hash",
+            "  • XADD strm * f v...     : Append event to Redis Stream",
+            "  • XRANGE strm start end  : Query stream events",
+            "  • EVAL script num keys.. : Run atomic Lua 5.1 script",
+            "  • WASM LIST / CALL func  : Execute WebAssembly function",
+            "  • CLUSTER NODES / SLOTS  : View distributed cluster & gossip topology",
             "  • VADD idx id f1 f2...   : Store embedding vector",
             "  • VSEARCH idx K metric.. : Nearest neighbor vector search",
             "  • INFO                   : View live engine metrics & stats",
@@ -328,6 +484,7 @@ document.addEventListener("DOMContentLoaded", () => {
     curl: "curl -fsSL https://raw.githubusercontent.com/GargAnshu9468/vortexkv/main/install.sh | bash",
     docker: "docker run -d -p 7379:7379 -p 7380:7380 vortexkv/vortex:latest",
     helm: "helm install vortexkv ./deployments/helm/vortexkv",
+    operator: "kubectl apply -f deployments/operator/crd.yaml && kubectl apply -f deployments/operator/operator.yaml",
     brew: "brew install vortexkv/tap/vortexkv",
     source: "git clone https://github.com/GargAnshu9468/vortexkv.git && make build"
   };

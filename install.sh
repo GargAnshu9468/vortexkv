@@ -74,7 +74,7 @@ elif command -v go >/dev/null 2>&1; then
 else
     printf "${CYAN}   Downloading release binary for %s-%s...${NC}\n" "$OS" "$ARCH"
     # Fallback release download URL (customizable with GitHub releases)
-    RELEASE_URL="https://github.com/vortexkv/vortexkv/releases/latest/download/vortexkv-${OS}-${ARCH}.tar.gz"
+    RELEASE_URL="https://github.com/GargAnshu9468/vortexkv/releases/latest/download/vortexkv-${OS}-${ARCH}.tar.gz"
     curl -fsSL "$RELEASE_URL" -o /tmp/vortex.tar.gz
     tar -xzf /tmp/vortex.tar.gz -C /tmp/
     $SUDO mv /tmp/vortex-server "$INSTALL_DIR/vortex-server"

@@ -58,7 +58,7 @@ Comprehensive production guides, client SDK integration code, and architectural 
 
 ### ⚡ 1. One-Line Universal Installer (macOS & Linux)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vortexkv/vortexkv/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/GargAnshu9468/vortexkv/main/install.sh | bash
 ```
 
 ### 🐳 2. Run via Docker Compose
@@ -73,10 +73,11 @@ docker compose --profile monitoring up -d
 make build
 ```
 This generates:
-- `bin/vortex-server`: The combined server daemon and embedded Web Studio in a single zero-dependency binary.
+- `bin/vortex-server`: Combined server daemon and embedded Web Studio in a single zero-dependency binary.
 - `bin/vortex-cli`: Interactive terminal client connecting to `:7379` with syntax colors and microsecond execution timers.
+- `bin/vortex-operator`: Native Kubernetes operator controller managing dynamic `VortexCluster` CRDs.
 
-### 2. Launch the Engine
+### 4. Launch the Engine
 ```bash
 ./bin/vortex-server -requirepass "vortex_secure_2026" -maxmemory 1gb
 ```
@@ -99,7 +100,7 @@ You will see:
 [VortexKV] 🌌 Immersive Visual Studio: http://0.0.0.0:7380
 ```
 
-### 3. Connect via Standard Redis CLI (Port 7379)
+### 5. Connect via Standard Redis CLI (Port 7379)
 ```bash
 redis-cli -p 7379 -a "vortex_secure_2026" PING
 # PONG
@@ -109,9 +110,92 @@ redis-cli -p 7379 -a "vortex_secure_2026" GET user:100
 # "HyperNova"
 ```
 
-### 4. Connect via Embedded Web Studio (Port 7380)
+### 6. Connect via Embedded Web Studio (Port 7380)
 Open your browser at:
 👉 **`http://localhost:7380`**
+
+---
+
+## 📜 Embedded Lua 5.1 Scripting
+
+Execute atomic multi-step logic inside the engine with zero network round-trip overhead:
+
+```bash
+# Atomic condition check and update in pure-Go Lua 5.1:
+redis-cli -p 7379 -a "vortex_secure_2026" EVAL "local v = redis.call('get', KEYS[1]); if not v then redis.call('set', KEYS[1], ARGV[1]); return 'CREATED'; else return 'EXISTS'; end" 1 lock:order:99 "worker-1"
+# "CREATED"
+
+# Load into SHA1 cache for ultra-fast EVALSHA execution:
+redis-cli -p 7379 -a "vortex_secure_2026" SCRIPT LOAD "return redis.call('incr', KEYS[1])"
+# "6b142468d20025f187a2d829fd240f92b0c360b8"
+```
+
+---
+
+## 🔮 WebAssembly (Wasm) Functions Engine
+
+Execute high-throughput custom bytecode modules compiled from Rust, Go, or C with native zero-CGO speed powered by `wazero`:
+
+```bash
+# Call pre-loaded Wasm bytecode with JSON or raw arguments:
+redis-cli -p 7379 -a "vortex_secure_2026" WASM CALL fast_hash '{"input":"vortex-stream"}'
+# "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+# Inspect currently loaded WebAssembly functions:
+redis-cli -p 7379 -a "vortex_secure_2026" WASM LIST
+# 1) 1) "name"
+#    2) "fast_hash"
+```
+
+---
+
+## 🌊 Redis Streams & Consumer Groups
+
+High-throughput distributed event streaming and task distribution with Pending Entries List (PEL):
+
+```bash
+# Append event to stream:
+redis-cli -p 7379 -a "vortex_secure_2026" XADD orders:stream * user_id 42 amount 99.50 status "pending"
+
+# Create consumer group:
+redis-cli -p 7379 -a "vortex_secure_2026" XGROUP CREATE orders:stream billing_workers $ MKSTREAM
+
+# Worker consumes and acknowledges task:
+redis-cli -p 7379 -a "vortex_secure_2026" XREADGROUP GROUP billing_workers worker_1 COUNT 1 BLOCK 2000 STREAMS orders:stream >
+redis-cli -p 7379 -a "vortex_secure_2026" XACK orders:stream billing_workers 1726150000000-0
+```
+
+---
+
+## ⚖️ Automated Cluster Slot Rebalancer
+
+Intelligent CLI automation for live slot migration across distributed cluster nodes:
+
+```bash
+# Check current slot distribution imbalance:
+./bin/vortex-cli --host 127.0.0.1 -p 7379 -a "vortex_secure_2026" cluster rebalance
+
+# Perform live automated rebalancing across all master nodes:
+./bin/vortex-cli --host 127.0.0.1 -p 7379 -a "vortex_secure_2026" cluster rebalance --auto
+```
+
+---
+
+## ☸️ VortexKV Kubernetes Operator
+
+Deploy and orchestrate resilient multi-node VortexKV clusters natively on Kubernetes:
+
+```bash
+# 1. Install CustomResourceDefinition (CRD) and RBAC permissions:
+kubectl apply -f deployments/operator/crd.yaml
+kubectl apply -f deployments/operator/rbac.yaml
+
+# 2. Deploy Operator controller:
+kubectl apply -f deployments/operator/operator.yaml
+
+# 3. Provision a 6-node clustered VortexKV instance with slot auto-partitioning:
+kubectl apply -f deployments/operator/example-cluster.yaml
+```
 
 ---
 
