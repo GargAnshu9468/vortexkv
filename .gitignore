@@ -47,3 +47,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Root demo media copies (official versions are tracked in docs/assets/)
+/vortexkv_demo.gif
+/vortexkv_demo.mp4
