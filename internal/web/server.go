@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vortexkv/vortexkv/internal/cluster"
 	"github.com/vortexkv/vortexkv/internal/datastruct"
 	"github.com/vortexkv/vortexkv/internal/engine"
 )
@@ -32,6 +33,7 @@ func NewServer(addr string, eng *engine.Engine) *Server {
 	}
 
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("/api/auth/status", s.handleAuthStatus)
 	mux.HandleFunc("/api/auth/login", s.handleAuthLogin)
 	mux.HandleFunc("/api/auth/logout", s.handleAuthLogout)
@@ -42,6 +44,8 @@ func NewServer(addr string, eng *engine.Engine) *Server {
 	mux.HandleFunc("/api/replication", s.authMiddleware(s.handleReplicationStatus))
 	mux.HandleFunc("/api/replication/promote", s.authMiddleware(s.handleReplicationPromote))
 	mux.HandleFunc("/api/replication/replicate", s.authMiddleware(s.handleReplicationReplicate))
+	mux.HandleFunc("/api/cluster", s.authMiddleware(s.handleClusterStatus))
+	mux.HandleFunc("/api/cluster/keyslot", s.authMiddleware(s.handleClusterKeyslot))
 	mux.HandleFunc("/api/info", s.authMiddleware(s.handleInfo))
 	mux.HandleFunc("/api/metrics", s.authMiddleware(s.handleMetrics))
 	mux.HandleFunc("/healthz", s.handleHealthz)
@@ -362,6 +366,87 @@ func (s *Server) handleReplicationReplicate(w http.ResponseWriter, r *http.Reque
 		"success": true,
 		"message": fmt.Sprintf("Connecting to master %s:%d", req.Host, req.Port),
 		"role":    "slave",
+	})
+}
+
+func (s *Server) handleClusterStatus(w http.ResponseWriter, r *http.Request) {
+	if s.engine.Cluster == nil || !s.engine.Cluster.Enabled {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"enabled": false,
+		})
+		return
+	}
+
+	type NodeInfo struct {
+		ID        string `json:"id"`
+		IP        string `json:"ip"`
+		Port      int    `json:"port"`
+		Role      string `json:"role"`
+		IsSelf    bool   `json:"is_self"`
+		Slots     string `json:"slots"`
+		SlotCount int    `json:"slot_count"`
+		LinkState string `json:"link_state"`
+	}
+
+	var nodesList []NodeInfo
+	nodesList = append(nodesList, NodeInfo{
+		ID:        s.engine.Cluster.Self.ID,
+		IP:        s.engine.Cluster.Self.IP,
+		Port:      s.engine.Cluster.Self.Port,
+		Role:      s.engine.Cluster.Self.Role,
+		IsSelf:    true,
+		Slots:     s.engine.Cluster.Self.SlotRangesString(),
+		SlotCount: s.engine.Cluster.Self.SlotCount(),
+		LinkState: s.engine.Cluster.Self.LinkState,
+	})
+
+	totalAssigned := s.engine.Cluster.Self.SlotCount()
+	for _, n := range s.engine.Cluster.Nodes {
+		if n.ID != s.engine.Cluster.Self.ID {
+			totalAssigned += n.SlotCount()
+			nodesList = append(nodesList, NodeInfo{
+				ID:        n.ID,
+				IP:        n.IP,
+				Port:      n.Port,
+				Role:      n.Role,
+				IsSelf:    false,
+				Slots:     n.SlotRangesString(),
+				SlotCount: n.SlotCount(),
+				LinkState: n.LinkState,
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"enabled":        true,
+		"self_id":        s.engine.Cluster.Self.ID,
+		"nodes":          nodesList,
+		"raw_nodes":      s.engine.Cluster.FormatNodes(),
+		"raw_info":       s.engine.Cluster.FormatInfo(),
+		"assigned_slots": totalAssigned,
+		"total_slots":    16384,
+	})
+}
+
+func (s *Server) handleClusterKeyslot(w http.ResponseWriter, r *http.Request) {
+	key := r.URL.Query().Get("key")
+	slot := cluster.KeySlot(key)
+	tag := cluster.ExtractHashTag(key)
+	crc := cluster.CRC16([]byte(tag))
+
+	owner := "Unassigned"
+	if s.engine.Cluster != nil {
+		if o := s.engine.Cluster.GetSlotOwner(slot); o != nil {
+			owner = fmt.Sprintf("%s:%d (%s)", o.IP, o.Port, o.ID[:8])
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"key":   key,
+		"tag":   tag,
+		"crc16": fmt.Sprintf("0x%04X", crc),
+		"slot":  slot,
+		"owner": owner,
 	})
 }
 

@@ -1276,6 +1276,86 @@
           </button>
         </div>
       </div>
+
+      <!-- 🌐 Distributed Cluster 16,384 Hash Slots Deck -->
+      <div class="panel" style="margin-top: 1.2rem; margin-bottom: 1.2rem;">
+        <div class="panel-header">
+          <div>
+            <span class="panel-title">🌐 Distributed Cluster & 16,384 Hash Slots</span>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.2rem;">
+              Sharded Cluster Topology, Slot Allocation & Client Redirection Routing
+            </div>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn" onclick="loadClusterData()">⟳ Refresh Cluster</button>
+          </div>
+        </div>
+
+        <!-- Slot Progress Bar -->
+        <div style="margin-bottom: 1.2rem;">
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-dim); margin-bottom:0.4rem;">
+            <span>Hash Slot Coverage: <strong id="clusterSlotCoverageText" style="color:var(--neon-cyan);">0 / 16,384 (0%)</strong></span>
+            <span id="clusterStatusBadge" style="color:var(--neon-green);">Cluster Ready</span>
+          </div>
+          <div style="height:12px; background:#161823; border-radius:6px; overflow:hidden; display:flex; border:1px solid var(--border-subtle);" id="clusterSlotProgressBar">
+            <div id="clusterSlotBarSelf" style="width:0%; background:linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); transition:width 0.4s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Cluster Nodes Table -->
+        <div class="keys-table-container" style="margin-bottom: 1.2rem;">
+          <table class="v-table">
+            <thead>
+              <tr>
+                <th>Node ID</th>
+                <th>Address</th>
+                <th>Role</th>
+                <th>Slot Count</th>
+                <th>Slot Ranges</th>
+                <th>Link State</th>
+              </tr>
+            </thead>
+            <tbody id="clusterNodesTableBody">
+              <tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:1rem;">Cluster information loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Interactive Key-to-Slot Calculator -->
+        <div style="background:rgba(0, 243, 255, 0.03); border:1px solid rgba(0, 243, 255, 0.2); border-radius:8px; padding:1.2rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+            <span style="font-weight:600; color:var(--neon-cyan); font-size:0.95rem;">🧮 Interactive Key-to-Slot Calculator</span>
+            <span style="font-size:0.75rem; color:var(--text-dim);">Standard Redis CRC16(tag) % 16384</span>
+          </div>
+          <div style="display:flex; gap:0.6rem; margin-bottom:0.8rem; flex-wrap:wrap;">
+            <input type="text" id="slotCalcInput" placeholder="Enter key name (e.g. {user:100}:profile or foo)" value="foo" oninput="calculateSlotLive()" style="flex:1; min-width:240px; background:#161823; border:1px solid var(--border-subtle); color:#fff; padding:0.6rem 0.8rem; border-radius:6px; font-family:var(--font-mono); font-size:0.85rem;" />
+            <div style="display:flex; gap:0.4rem;">
+              <button class="btn" onclick="setSlotCalcKey('foo')">foo</button>
+              <button class="btn" onclick="setSlotCalcKey('{user:100}:profile')">{user:100}:profile</button>
+              <button class="btn" onclick="setSlotCalcKey('{user:100}:orders')">{user:100}:orders</button>
+              <button class="btn" onclick="setSlotCalcKey('orders:999')">orders:999</button>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.8rem; text-align:center;" id="slotCalcResults">
+            <div style="background:rgba(0,0,0,0.4); padding:0.6rem; border-radius:6px; border:1px solid var(--border-subtle);">
+              <div style="font-size:0.7rem; color:var(--text-dim);">HASH TAG</div>
+              <div id="calcTag" style="font-family:var(--font-mono); color:var(--neon-purple); font-weight:600; font-size:0.9rem; margin-top:0.2rem;">foo</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.4); padding:0.6rem; border-radius:6px; border:1px solid var(--border-subtle);">
+              <div style="font-size:0.7rem; color:var(--text-dim);">CRC16</div>
+              <div id="calcCRC" style="font-family:var(--font-mono); color:var(--neon-green); font-weight:600; font-size:0.9rem; margin-top:0.2rem;">0x31C3</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.4); padding:0.6rem; border-radius:6px; border:1px solid var(--border-subtle);">
+              <div style="font-size:0.7rem; color:var(--text-dim);">HASH SLOT</div>
+              <div id="calcSlot" style="font-family:var(--font-mono); color:var(--neon-cyan); font-weight:700; font-size:1rem; margin-top:0.2rem;">12182</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.4); padding:0.6rem; border-radius:6px; border:1px solid var(--border-subtle);">
+              <div style="font-size:0.7rem; color:var(--text-dim);">OWNING NODE</div>
+              <div id="calcOwner" style="font-family:var(--font-mono); color:var(--text-bright); font-weight:600; font-size:0.85rem; margin-top:0.2rem;">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -1563,7 +1643,7 @@
         if (target === 'keyspace') refreshKeysTable();
         if (target === 'slowlog') refreshSlowLogs();
         if (target === 'acl') loadACLUsers();
-        if (target === 'replication') loadReplicationData();
+        if (target === 'replication') { loadReplicationData(); loadClusterData(); }
         playTone(520, 'sine', 0.08);
       });
     });
@@ -2434,6 +2514,106 @@
         }
       } catch (e) {
         errMsg.innerText = 'Network error while attaching to master';
+      }
+    }
+
+    // Cluster Hash Slots & Routing Deck
+    async function loadClusterData() {
+      try {
+        const res = await authFetch('/api/cluster');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const coverageText = document.getElementById('clusterSlotCoverageText');
+        const statusBadge = document.getElementById('clusterStatusBadge');
+        const barSelf = document.getElementById('clusterSlotBarSelf');
+        const tbody = document.getElementById('clusterNodesTableBody');
+
+        if (!data.enabled) {
+          if (coverageText) coverageText.innerText = 'Cluster Mode Disabled (Standalone Node)';
+          if (statusBadge) {
+            statusBadge.innerText = 'Standalone Mode';
+            statusBadge.style.color = 'var(--text-dim)';
+          }
+          if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:1rem;">Instance is running in high-performance standalone mode. Enable distributed scaling with <code style="color:var(--neon-cyan)">-cluster-enabled</code>.</td></tr>`;
+          }
+          calculateSlotLive();
+          return;
+        }
+
+        const assigned = data.assigned_slots || 0;
+        const pct = ((assigned / 16384) * 100).toFixed(1);
+        if (coverageText) coverageText.innerText = `${assigned.toLocaleString()} / 16,384 (${pct}%)`;
+        if (barSelf) barSelf.style.width = `${pct}%`;
+
+        if (statusBadge) {
+          if (assigned === 16384) {
+            statusBadge.innerText = 'Cluster Full Healthy (16,384 Slots Active)';
+            statusBadge.style.color = 'var(--neon-green)';
+          } else {
+            statusBadge.innerText = `Active (${data.nodes ? data.nodes.length : 1} Nodes Connected)`;
+            statusBadge.style.color = 'var(--neon-cyan)';
+          }
+        }
+
+        if (tbody && data.nodes && data.nodes.length > 0) {
+          let rows = '';
+          data.nodes.forEach(n => {
+            const isSelf = n.is_self;
+            const badge = isSelf ? '<span class="status-pill status-healthy" style="margin-left:0.4rem;">myself</span>' : '';
+            const roleColor = n.role === 'master' ? 'var(--neon-cyan)' : 'var(--neon-purple)';
+            rows += `<tr>
+              <td><span style="font-family:var(--font-mono); color:var(--text-bright);">${escapeHtml(n.id.substring(0, 12))}...</span>${badge}</td>
+              <td style="font-family:var(--font-mono);">${escapeHtml(n.ip)}:${n.port}</td>
+              <td><strong style="color:${roleColor}; text-transform:uppercase;">${escapeHtml(n.role)}</strong></td>
+              <td style="font-family:var(--font-mono); font-weight:600;">${(n.slot_count || 0).toLocaleString()}</td>
+              <td style="font-family:var(--font-mono); font-size:0.8rem; color:var(--text-dim);">${escapeHtml(n.slots || '-')}</td>
+              <td><span class="status-pill ${n.link_state === 'connected' ? 'status-healthy' : 'status-warning'}">${escapeHtml(n.link_state)}</span></td>
+            </tr>`;
+          });
+          tbody.innerHTML = rows;
+        }
+
+        calculateSlotLive();
+      } catch (e) {
+        console.error('Failed to load cluster data:', e);
+      }
+    }
+
+    let calcDebounce = null;
+    async function calculateSlotLive() {
+      const input = document.getElementById('slotCalcInput');
+      if (!input) return;
+      const key = input.value.trim();
+      if (!key) return;
+
+      clearTimeout(calcDebounce);
+      calcDebounce = setTimeout(async () => {
+        try {
+          const res = await authFetch(`/api/cluster/keyslot?key=${encodeURIComponent(key)}`);
+          if (!res.ok) return;
+          const data = await res.json();
+          const elTag = document.getElementById('calcTag');
+          const elCRC = document.getElementById('calcCRC');
+          const elSlot = document.getElementById('calcSlot');
+          const elOwner = document.getElementById('calcOwner');
+          if (elTag) elTag.innerText = data.tag || key;
+          if (elCRC) elCRC.innerText = data.crc16 || '0x0000';
+          if (elSlot) elSlot.innerText = data.slot !== undefined ? data.slot : '-';
+          if (elOwner) elOwner.innerText = data.owner || 'This Node (Local)';
+        } catch (e) {
+          console.error('Error calculating slot:', e);
+        }
+      }, 100);
+    }
+
+    function setSlotCalcKey(k) {
+      const input = document.getElementById('slotCalcInput');
+      if (input) {
+        input.value = k;
+        calculateSlotLive();
+        playTone(700, 'triangle', 0.05);
       }
     }
 

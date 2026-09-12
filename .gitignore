@@ -16,6 +16,8 @@ coverage.txt
 *.rdb
 dump.rdb
 vortex.aof
+nodes*.conf
+nodes_*.conf
 
 # Security Credentials, Keys & Certificates
 *.pem

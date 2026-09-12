@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vortexkv/vortexkv/internal/cluster"
 	"github.com/vortexkv/vortexkv/internal/datastruct"
 	"github.com/vortexkv/vortexkv/internal/persistence"
 	"github.com/vortexkv/vortexkv/internal/pubsub"
@@ -34,6 +35,7 @@ type Engine struct {
 	RDBPath        string
 	ACL            *ACLManager
 	Replication    *replication.ReplicationManager
+	Cluster        *cluster.ClusterManager
 	Password       string
 	MaxMemory      uint64 // in bytes; 0 = unlimited
 	EvictionPolicy string // "allkeys-lru", "volatile-lru", "noeviction"
@@ -201,6 +203,9 @@ func (e *Engine) SetMasterPassword(pass string) {
 			e.ACL.SetUser(def)
 		}
 	}
+	if e.Cluster != nil {
+		e.Cluster.AuthPass = pass
+	}
 }
 
 func (e *Engine) GetClientSession(connID string) *ClientSession {
@@ -262,6 +267,27 @@ func (e *Engine) ExecuteCommand(connID string, args []string) resp.Value {
 	if e.Replication != nil && e.Replication.ReadOnly && connID != "replica_stream" && connID != "aof_replay" {
 		if isWriteCommand(cmdName) {
 			return resp.Error("READONLY You can't write against a read only replica.")
+		}
+	}
+
+	// Cluster slot routing guard: When cluster mode is enabled, verify slot ownership
+	if e.Cluster != nil && e.Cluster.Enabled && connID != "replica_stream" && connID != "aof_replay" && connID != "" {
+		keys := extractCommandKeys(cmdName, args[1:])
+		if len(keys) > 0 {
+			firstSlot := e.Cluster.KeySlot(keys[0])
+			for i := 1; i < len(keys); i++ {
+				if e.Cluster.KeySlot(keys[i]) != firstSlot {
+					return resp.Error("CROSSSLOT Keys in request don't hash to the same slot")
+				}
+			}
+
+			owner := e.Cluster.GetSlotOwner(firstSlot)
+			if owner == nil {
+				return resp.Error(fmt.Sprintf("CLUSTERDOWN Hash slot %d not served", firstSlot))
+			}
+			if owner.ID != e.Cluster.Self.ID {
+				return resp.Error(fmt.Sprintf("MOVED %d %s:%d", firstSlot, owner.IP, owner.Port))
+			}
 		}
 	}
 
@@ -480,6 +506,9 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 			resp.BulkString(linkStatus),
 			resp.Integer(e.Replication.MasterOffset.Load()),
 		}), false
+
+	case "CLUSTER":
+		return e.handleClusterCommand(connID, args)
 
 	case "SAVE":
 		if e.RDBManager == nil {
@@ -2447,7 +2476,8 @@ func extractCommandKeys(cmd string, args []string) []string {
 	switch cmd {
 	case "AUTH", "PING", "ECHO", "QUIT", "COMMAND", "CLIENT", "SELECT", "INFO", "DBSIZE",
 		"TIME", "SLOWLOG", "MULTI", "EXEC", "DISCARD", "BGREWRITEAOF", "ACL",
-		"FLUSHDB", "FLUSHALL", "CONFIG", "SHUTDOWN", "PUBSUB", "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE":
+		"FLUSHDB", "FLUSHALL", "CONFIG", "SHUTDOWN", "PUBSUB", "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE",
+		"SAVE", "BGSAVE", "LASTSAVE", "CLUSTER", "REPLICAOF", "SLAVEOF", "REPLCONF", "ROLE":
 		return nil
 	case "MGET", "DEL", "EXISTS":
 		return args
@@ -2695,4 +2725,197 @@ func (e *Engine) dumpAllRDBEntries() ([]persistence.RDBEntry, map[string]string)
 	}
 
 	return entries, aux
+}
+
+func (e *Engine) handleClusterCommand(connID string, args []string) (resp.Value, bool) {
+	if len(args) < 1 {
+		return resp.Error("ERR wrong number of arguments for 'cluster' command"), false
+	}
+
+	sub := strings.ToUpper(args[0])
+	switch sub {
+	case "KEYSLOT":
+		if len(args) < 2 {
+			return resp.Error("ERR wrong number of arguments for 'cluster keyslot' command"), false
+		}
+		slot := cluster.KeySlot(args[1])
+		return resp.Integer(int64(slot)), false
+
+	case "NODES":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		return resp.BulkString(e.Cluster.FormatNodes()), false
+
+	case "SLOTS":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		return e.Cluster.FormatSlots(), false
+
+	case "INFO":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		return resp.BulkString(e.Cluster.FormatInfo()), false
+
+	case "MYID":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		return resp.BulkString(e.Cluster.Self.ID), false
+
+	case "MEET":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		if len(args) < 3 {
+			return resp.Error("ERR wrong number of arguments for 'cluster meet' command"), false
+		}
+		port, err := strconv.Atoi(args[2])
+		if err != nil {
+			return resp.Error("ERR invalid port"), false
+		}
+		busPort := port + 10000
+		if len(args) >= 4 {
+			if bp, err := strconv.Atoi(args[3]); err == nil {
+				busPort = bp
+			}
+		}
+		_, err = e.Cluster.Meet(args[1], port, busPort)
+		if err != nil {
+			return resp.Error(fmt.Sprintf("ERR %v", err)), false
+		}
+		return resp.SimpleString("OK"), false
+
+	case "ADDSLOTS":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		if len(args) < 2 {
+			return resp.Error("ERR wrong number of arguments for 'cluster addslots' command"), false
+		}
+		var slots []uint16
+		for _, arg := range args[1:] {
+			s, err := strconv.Atoi(arg)
+			if err != nil || s < 0 || s >= 16384 {
+				return resp.Error(fmt.Sprintf("ERR Invalid or out of range slot '%s'", arg)), false
+			}
+			slots = append(slots, uint16(s))
+		}
+		if err := e.Cluster.AddSlots(slots...); err != nil {
+			return resp.Error(err.Error()), false
+		}
+		return resp.SimpleString("OK"), false
+
+	case "DELSLOTS":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		if len(args) < 2 {
+			return resp.Error("ERR wrong number of arguments for 'cluster delslots' command"), false
+		}
+		var slots []uint16
+		for _, arg := range args[1:] {
+			s, err := strconv.Atoi(arg)
+			if err != nil || s < 0 || s >= 16384 {
+				return resp.Error(fmt.Sprintf("ERR Invalid or out of range slot '%s'", arg)), false
+			}
+			slots = append(slots, uint16(s))
+		}
+		if err := e.Cluster.DelSlots(slots...); err != nil {
+			return resp.Error(err.Error()), false
+		}
+		return resp.SimpleString("OK"), false
+
+	case "REPLICATE":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		if len(args) < 2 {
+			return resp.Error("ERR wrong number of arguments for 'cluster replicate' command"), false
+		}
+		if err := e.Cluster.Replicate(args[1]); err != nil {
+			return resp.Error(err.Error()), false
+		}
+		return resp.SimpleString("OK"), false
+
+	case "FORGET":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		if len(args) < 2 {
+			return resp.Error("ERR wrong number of arguments for 'cluster forget' command"), false
+		}
+		if err := e.Cluster.RemoveNode(args[1]); err != nil {
+			return resp.Error(err.Error()), false
+		}
+		return resp.SimpleString("OK"), false
+
+	case "COUNTKEYSINSLOT":
+		if len(args) < 2 {
+			return resp.Error("ERR wrong number of arguments for 'cluster countkeysinslot' command"), false
+		}
+		targetSlot, err := strconv.Atoi(args[1])
+		if err != nil || targetSlot < 0 || targetSlot >= 16384 {
+			return resp.Error(fmt.Sprintf("ERR Invalid or out of range slot '%s'", args[1])), false
+		}
+		keys := e.Keyspace.Keys("*")
+		var count int64
+		for _, k := range keys {
+			if int(cluster.KeySlot(k)) == targetSlot {
+				count++
+			}
+		}
+		return resp.Integer(count), false
+
+	case "GETKEYSINSLOT":
+		if len(args) < 3 {
+			return resp.Error("ERR wrong number of arguments for 'cluster getkeysinslot' command"), false
+		}
+		targetSlot, err := strconv.Atoi(args[1])
+		if err != nil || targetSlot < 0 || targetSlot >= 16384 {
+			return resp.Error(fmt.Sprintf("ERR Invalid or out of range slot '%s'", args[1])), false
+		}
+		maxCount, err := strconv.Atoi(args[2])
+		if err != nil || maxCount < 0 {
+			return resp.Error("ERR value is not an integer or out of range"), false
+		}
+		keys := e.Keyspace.Keys("*")
+		var matched []resp.Value
+		for _, k := range keys {
+			if int(cluster.KeySlot(k)) == targetSlot {
+				matched = append(matched, resp.BulkString(k))
+				if len(matched) >= maxCount {
+					break
+				}
+			}
+		}
+		return resp.Array(matched), false
+
+	case "SAVECONFIG":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		if err := e.Cluster.SaveConfig(); err != nil {
+			return resp.Error(fmt.Sprintf("ERR %v", err)), false
+		}
+		return resp.SimpleString("OK"), false
+
+	case "RESET":
+		if e.Cluster == nil {
+			return resp.Error("ERR This instance has cluster support disabled"), false
+		}
+		for i := 0; i < 16384; i++ {
+			e.Cluster.Self.Slots[i] = false
+			e.Cluster.SlotMap[i] = nil
+		}
+		e.Cluster.Nodes = make(map[string]*cluster.ClusterNode)
+		e.Cluster.Nodes[e.Cluster.Self.ID] = e.Cluster.Self
+		_ = e.Cluster.SaveConfig()
+		return resp.SimpleString("OK"), false
+
+	default:
+		return resp.Error(fmt.Sprintf("ERR unknown subcommand '%s'. Try CLUSTER HELP.", sub)), false
+	}
 }

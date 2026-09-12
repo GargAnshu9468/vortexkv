@@ -11,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/vortexkv/vortexkv/internal/cluster"
 	"github.com/vortexkv/vortexkv/internal/engine"
 	"github.com/vortexkv/vortexkv/internal/persistence"
 	"github.com/vortexkv/vortexkv/internal/replication"
@@ -41,6 +42,12 @@ func main() {
 	replicaof := flag.String("replicaof", "", "Master address to replicate from (e.g. '127.0.0.1:7379' or '127.0.0.1 7379')")
 	masterauth := flag.String("masterauth", "", "Password to authenticate with master node")
 	replicaReadOnly := flag.Bool("replica-read-only", true, "Enforce read-only access on replica node")
+
+	clusterEnabled := flag.Bool("cluster-enabled", false, "Enable Redis cluster distributed multi-node mode")
+	clusterConfigFile := flag.String("cluster-config-file", "nodes.conf", "Cluster node configuration file")
+	clusterAnnounceIP := flag.String("cluster-announce-ip", "127.0.0.1", "Cluster announce IP for cluster-aware clients")
+	clusterAnnouncePort := flag.Int("cluster-announce-port", 0, "Cluster announce port (default: matches -port)")
+	clusterAnnounceBusPort := flag.Int("cluster-announce-bus-port", 0, "Cluster announce bus port (default: port + 10000)")
 
 	webEnabled := flag.Bool("web-enabled", true, "Enable embedded Web Studio dashboard")
 	webPort := flag.Int("web-port", 7380, "Port for Visual Studio Web Dashboard & WebSockets (default: 7380)")
@@ -77,6 +84,19 @@ func main() {
 	}
 	eng.SetMasterPassword(masterPass)
 	eng.MaxMemory = parseMemory(*maxmemoryStr)
+
+	if *clusterEnabled {
+		annPort := *port
+		if *clusterAnnouncePort > 0 {
+			annPort = *clusterAnnouncePort
+		}
+		annBusPort := annPort + 10000
+		if *clusterAnnounceBusPort > 0 {
+			annBusPort = *clusterAnnounceBusPort
+		}
+		eng.Cluster = cluster.NewClusterManager(*clusterAnnounceIP, annPort, annBusPort, *clusterConfigFile)
+		eng.Cluster.AuthPass = masterPass
+	}
 
 	if eng.Replication != nil {
 		eng.Replication.ListeningPort = *port
@@ -141,6 +161,10 @@ func main() {
 		fmt.Printf("\033[38;2;255;170;0m[VortexKV]\033[0m 🔁 Cluster Role: REPLICA of %s:%d (read-only: %v)\n", eng.Replication.MasterHost, eng.Replication.MasterPort, eng.Replication.ReadOnly)
 	} else if eng.Replication != nil {
 		fmt.Printf("\033[38;2;0;243;255m[VortexKV]\033[0m 👑 Cluster Role: MASTER node (Replication ID: %s)\n", eng.Replication.MasterReplID[:8])
+	}
+
+	if eng.Cluster != nil && eng.Cluster.Enabled {
+		fmt.Printf("\033[38;2;0;243;255m[VortexKV]\033[0m 🌐 Distributed Cluster Mode: ACTIVE (Node ID: %s, Slots: %d/16384)\n", eng.Cluster.Self.ID[:8], eng.Cluster.Self.SlotCount())
 	}
 
 	if eng.MaxMemory > 0 {

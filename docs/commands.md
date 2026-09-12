@@ -190,3 +190,74 @@ Delete one or more vectors by ID from the index and rewire HNSW graph neighbors:
 ```bash
 VDEL <index> <id> [<id> ...]
 ```
+
+---
+
+## 🌐 Distributed Cluster Commands
+
+### `CLUSTER KEYSLOT`
+Calculate the 14-bit hash slot `[0..16383]` for a given key string (with full `{...}` hash tag support):
+```bash
+CLUSTER KEYSLOT <key>
+# Example: CLUSTER KEYSLOT {user:100}:profile -> (integer) 1453
+```
+
+### `CLUSTER NODES`
+Get standard Redis multi-line serialization of all cluster nodes, addresses, roles, and assigned slot ranges:
+```bash
+CLUSTER NODES
+```
+
+### `CLUSTER SLOTS`
+Get nested RESP array detailing slot range boundaries and active master/replica socket endpoints:
+```bash
+CLUSTER SLOTS
+```
+
+### `CLUSTER INFO`
+Return cluster state, slot coverage count, node count, and current epoch:
+```bash
+CLUSTER INFO
+```
+
+### `CLUSTER MEET`
+Introduce an external node into the cluster topology:
+```bash
+CLUSTER MEET <ip> <port> [<bus-port>]
+```
+
+### `CLUSTER ADDSLOTS`
+Assign one or more hash slots to the receiving node:
+```bash
+CLUSTER ADDSLOTS <slot> [<slot> ...]
+```
+
+### `CLUSTER DELSLOTS`
+Remove one or more hash slots from the receiving node:
+```bash
+CLUSTER DELSLOTS <slot> [<slot> ...]
+```
+
+### `CLUSTER COUNTKEYSINSLOT`
+Return the number of local keys residing in the specified hash slot:
+```bash
+CLUSTER COUNTKEYSINSLOT <slot>
+```
+
+### `CLUSTER GETKEYSINSLOT`
+Retrieve up to `<count>` keys stored in the specified hash slot:
+```bash
+CLUSTER GETKEYSINSLOT <slot> <count>
+```
+
+### `CLUSTER MYID`
+Return the local node's 40-character hexadecimal node identifier:
+```bash
+CLUSTER MYID
+```
+
+### `CLUSTER SAVECONFIG`
+Durable atomic commit of cluster configuration to `nodes.conf`:
+```bash
+CLUSTER SAVECONFIG
+```

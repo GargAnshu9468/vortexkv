@@ -25,6 +25,7 @@
 - 📦 **Zero-Concern Production Packaging**: Includes multi-stage `Dockerfile`, `systemd` service unit (`vortexkv.service`), and production template `vortex.conf`.
 - 💾 **Dual Persistence (AOF + Binary RDB Snapshots)**: Complete point-in-time snapshotting (`SAVE`, `BGSAVE`, `LASTSAVE`) in standard `REDIS0009` format with 64-bit CRC64 checksum validation, alongside Append-Only File (AOF) durability with configurable fsync policies (`always`, `everysec`, `no`).
 - 🔁 **Master-Replica Asynchronous Replication**: Redis 6+ compatible `PSYNC`, `REPLCONF`, and `REPLICAOF` for horizontal read scaling, live command streaming, and instant failover (`REPLICAOF NO ONE`).
+- 🌐 **Distributed Multi-Node Cluster & 16,384 Hash Slots**: Linear horizontal scaling with 16,384 CRC16 hash slots, standard `-MOVED <slot> <ip:port>` client redirection, `{...}` hash tags for atomic multi-key co-location, and cluster wire commands (`CLUSTER KEYSLOT`, `CLUSTER NODES`, `CLUSTER SLOTS`, `CLUSTER MEET`, `CLUSTER ADDSLOTS`, `CLUSTER COUNTKEYSINSLOT`, `CLUSTER GETKEYSINSLOT`).
 - 🌊 **Redis Streams & Consumer Groups**: High-throughput, sub-millisecond event streaming and distributed task queues (`XADD`, `XREAD`, `XGROUP`, `XREADGROUP`, `XACK`, `XPENDING`, `XINFO`) with Pending Entries List (PEL) and zero-CPU blocking reads.
 - 📡 **Real-time Web Studio & WebSocket Stream**: Embedded SPA dashboard running on port `7380` with zero external dependencies.
 - 📊 **Cloud-Native Prometheus Observability**: Built-in Prometheus text exporter on `GET /metrics` and Kubernetes liveness/readiness probe on `GET /healthz`.
@@ -37,6 +38,7 @@
 Comprehensive production guides, client SDK integration code, and architectural references are available in the **[`/docs`](./docs/README.md)** directory:
 
 - 🚀 [**Quickstart Guide**](./docs/quickstart.md) — 5-minute setup and tour.
+- 🌐 [**Distributed Cluster Guide**](./docs/cluster.md) — 16,384 hash slots, multi-node routing, and failover.
 - 🔁 [**Replication & High Availability Guide**](./docs/replication.md) — PSYNC, read-scaling, and failover topologies.
 - 🌊 [**Streams & Consumer Groups Guide**](./docs/streams.md) — Distributed event streaming, worker pools, and PEL recovery.
 - 🔌 [**Client SDK Integration Guides**](./docs/clients.md) — Drop-in code for Python, Node.js, Go, Java, Rust, and C#.
