@@ -1092,13 +1092,15 @@
             
             <div style="padding: 0.4rem 1rem; background: rgba(0,0,0,0.4);">
               <div class="chips-row">
-                <span class="chip" onclick="executeQuick('PING')">PING</span>
-                <span class="chip" onclick="executeQuick('INFO')">INFO</span>
-                <span class="chip" onclick="executeQuick('DBSIZE')">DBSIZE</span>
-                <span class="chip" onclick="executeQuick('KEYS *')">KEYS *</span>
-                <span class="chip" onclick="executeQuick('SET alpha \"quantum speed\" EX 60')">SET alpha</span>
-                <span class="chip" onclick="executeQuick('HSET hero:1 name \"Nova\" power 99')">HSET hero</span>
-                <span class="chip" onclick="executeQuick('ZADD ranking 990 \"CyberGhost\" 850 \"Viper\"')">ZADD ranking</span>
+                <span class="chip" data-cmd="PING">PING</span>
+                <span class="chip" data-cmd="INFO">INFO</span>
+                <span class="chip" data-cmd="DBSIZE">DBSIZE</span>
+                <span class="chip" data-cmd="KEYS *">KEYS *</span>
+                <span class="chip" data-cmd="SET alpha 'quantum speed' EX 60">SET alpha</span>
+                <span class="chip" data-cmd="HSET hero:1 name 'Nova' power 99">HSET hero</span>
+                <span class="chip" data-cmd="ZADD ranking 990 'CyberGhost' 850 'Viper'">ZADD ranking</span>
+                <span class="chip" data-cmd="XADD global:events * user 'Alice' action 'login'">XADD events</span>
+                <span class="chip" data-cmd="VSEARCH embeddings 1 cosine 0.88 0.12 0.05 0.01">AI VSEARCH</span>
               </div>
             </div>
 
@@ -2273,6 +2275,13 @@
       document.getElementById('termInput').value = cmd;
       executeCommand(cmd);
     }
+
+    document.querySelectorAll('.chips-row .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const cmd = chip.getAttribute('data-cmd');
+        if (cmd) executeQuick(cmd);
+      });
+    });
 
     // Seed Sample Data
     document.getElementById('btnSeedData').addEventListener('click', async () => {
