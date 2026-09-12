@@ -1099,7 +1099,7 @@
                 <span class="chip" data-cmd="SET alpha 'quantum speed' EX 60">SET alpha</span>
                 <span class="chip" data-cmd="HSET hero:1 name 'Nova' power 99">HSET hero</span>
                 <span class="chip" data-cmd="ZADD ranking 990 'CyberGhost' 850 'Viper'">ZADD ranking</span>
-                <span class="chip" data-cmd="XADD global:events * user 'Alice' action 'login'">XADD events</span>
+                <span class="chip" data-cmd="XADD telemetry:stream * user 'Alice' action 'login'">XADD telemetry</span>
                 <span class="chip" data-cmd="VSEARCH embeddings 1 cosine 0.88 0.12 0.05 0.01">AI VSEARCH</span>
               </div>
             </div>
@@ -2236,7 +2236,7 @@
 
         let resText = data.result;
         if (data.array_result && data.array_result.length > 0) {
-          resText = data.array_result.map((item, idx) => `${idx + 1}) "${item}"`).join('\n');
+          resText = data.array_result.join('\n');
         }
 
         entry.innerHTML = `

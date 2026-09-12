@@ -977,12 +977,44 @@ func (s *Server) handleExec(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if res.Type == '*' && !res.Null {
-		for _, it := range res.Array {
-			respObj.ArrayResult = append(respObj.ArrayResult, it.String())
-		}
+		respObj.ArrayResult = formatRESPTree(res, 0)
 	}
 
 	writeJSON(w, http.StatusOK, respObj)
+}
+
+func formatRESPTree(v resp.Value, indent int) []string {
+	pad := strings.Repeat("  ", indent)
+	if v.Type == resp.ArrayPrefix {
+		if v.Null {
+			return []string{pad + "(nil)"}
+		}
+		if len(v.Array) == 0 {
+			return []string{pad + "(empty array)"}
+		}
+		var lines []string
+		for idx, it := range v.Array {
+			subLines := formatRESPTree(it, indent+1)
+			if len(subLines) == 0 {
+				continue
+			}
+			lines = append(lines, fmt.Sprintf("%s%d) %s", pad, idx+1, strings.TrimLeft(subLines[0], " ")))
+			if len(subLines) > 1 {
+				lines = append(lines, subLines[1:]...)
+			}
+		}
+		return lines
+	}
+	if v.Null {
+		return []string{pad + "(nil)"}
+	}
+	if v.Type == resp.IntegerPrefix {
+		return []string{fmt.Sprintf("%s(integer) %d", pad, v.Num)}
+	}
+	if v.Type == resp.BulkStringPrefix {
+		return []string{fmt.Sprintf("%s\"%s\"", pad, string(v.Bulk))}
+	}
+	return []string{pad + v.String()}
 }
 
 func (s *Server) handleSlowLog(w http.ResponseWriter, r *http.Request) {
