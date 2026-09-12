@@ -96,6 +96,14 @@ func main() {
 		}
 		eng.Cluster = cluster.NewClusterManager(*clusterAnnounceIP, annPort, annBusPort, *clusterConfigFile)
 		eng.Cluster.AuthPass = masterPass
+		if err := eng.Cluster.StartBus(); err != nil {
+			log.Printf("[VortexKV] Warning: cluster bus failed to start on port %d: %v", annBusPort, err)
+		}
+		if eng.Replication != nil {
+			eng.Cluster.OnPromote = func() {
+				eng.Replication.PromoteToMaster()
+			}
+		}
 	}
 
 	if eng.Replication != nil {

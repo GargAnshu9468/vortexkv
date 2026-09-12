@@ -261,3 +261,48 @@ Durable atomic commit of cluster configuration to `nodes.conf`:
 ```bash
 CLUSTER SAVECONFIG
 ```
+
+---
+
+## ⚡ Embedded Lua 5.1 Scripting
+
+VortexKV embeds a pure-Go Lua 5.1 runtime with zero external C dependencies, providing sub-millisecond atomic multi-step execution directly in memory.
+
+### `EVAL`
+Execute an atomic Lua script directly in the engine:
+```bash
+EVAL <script> <numkeys> [key ...] [arg ...]
+# Example: Atomic rate-limiter
+EVAL "local c = redis.call('INCR', KEYS[1]); if c == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end; return c" 1 rate:ip:101 60
+```
+
+### `EVALSHA`
+Execute a cached script by its 40-character SHA1 hash digest without transmitting script body:
+```bash
+EVALSHA <sha1> <numkeys> [key ...] [arg ...]
+```
+
+### `SCRIPT LOAD`
+Pre-compile and store a script in the server's cache, returning its SHA1 checksum:
+```bash
+SCRIPT LOAD "<script>"
+```
+
+### `SCRIPT EXISTS`
+Verify whether one or more script digests currently reside in the execution cache:
+```bash
+SCRIPT EXISTS <sha1> [<sha1> ...]
+```
+
+### `SCRIPT FLUSH`
+Flush all cached Lua scripts from memory:
+```bash
+SCRIPT FLUSH [ASYNC|SYNC]
+```
+
+### `SCRIPT KILL`
+Terminate a long-running or non-mutating infinite loop script:
+```bash
+SCRIPT KILL
+```
+

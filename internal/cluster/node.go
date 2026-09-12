@@ -22,6 +22,8 @@ type ClusterNode struct {
 	LinkState string         `json:"link_state"` // "connected" or "disconnected"
 	PingSent  int64          `json:"ping_sent"`
 	PongRecv  int64          `json:"pong_recv"`
+	PFail     bool           `json:"pfail"`
+	Fail      bool           `json:"fail"`
 }
 
 // GenerateNodeID creates a cryptographic 40-character hex node identifier.
@@ -56,6 +58,8 @@ func NewNode(id, ip string, port, busPort int, role string) *ClusterNode {
 		LinkState: "connected",
 		PingSent:  0,
 		PongRecv:  time.Now().UnixMilli(),
+		PFail:     false,
+		Fail:      false,
 	}
 }
 
@@ -123,6 +127,11 @@ func (n *ClusterNode) FormatNodeLine(isMyself bool) string {
 		flags = append(flags, "myself")
 	}
 	flags = append(flags, n.Role)
+	if n.Fail {
+		flags = append(flags, "fail")
+	} else if n.PFail {
+		flags = append(flags, "fail?")
+	}
 
 	masterID := n.MasterID
 	if masterID == "" {

@@ -34,6 +34,7 @@ type Engine struct {
 	RDBManager     *persistence.RDBManager
 	RDBPath        string
 	ACL            *ACLManager
+	Lua            *LuaManager
 	Replication    *replication.ReplicationManager
 	Cluster        *cluster.ClusterManager
 	Password       string
@@ -49,6 +50,7 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy, rdbPathOpt .
 	broker := pubsub.NewBroker()
 	tele := telemetry.NewTelemetry()
 	acl := NewACLManager("")
+	luaMgr := NewLuaManager()
 
 	rdbPath := "dump.rdb"
 	if len(rdbPathOpt) > 0 {
@@ -80,6 +82,7 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy, rdbPathOpt .
 			Broker:         broker,
 			Telemetry:      tele,
 			ACL:            acl,
+			Lua:            luaMgr,
 			clientSessions: make(map[string]*ClientSession),
 		}
 		_ = persistence.Replay(aofPath, func(args []string) error {
@@ -101,6 +104,7 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy, rdbPathOpt .
 		RDBManager:     rdbMgr,
 		RDBPath:        rdbPath,
 		ACL:            acl,
+		Lua:            luaMgr,
 		EvictionPolicy: "allkeys-lru",
 		clientSessions: make(map[string]*ClientSession),
 	}
@@ -453,6 +457,24 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 
 	case "COMMAND":
 		return resp.Array([]resp.Value{}), false
+
+	case "EVAL":
+		if e.Lua == nil {
+			return resp.Error("ERR Lua engine not initialized"), false
+		}
+		return e.Lua.Eval(e, args), false
+
+	case "EVALSHA":
+		if e.Lua == nil {
+			return resp.Error("ERR Lua engine not initialized"), false
+		}
+		return e.Lua.EvalSha(e, args), false
+
+	case "SCRIPT":
+		if e.Lua == nil {
+			return resp.Error("ERR Lua engine not initialized"), false
+		}
+		return e.Lua.ScriptCommand(args), false
 
 	case "CLIENT":
 		if len(args) > 0 && strings.ToUpper(args[0]) == "SETNAME" {
@@ -2477,8 +2499,17 @@ func extractCommandKeys(cmd string, args []string) []string {
 	case "AUTH", "PING", "ECHO", "QUIT", "COMMAND", "CLIENT", "SELECT", "INFO", "DBSIZE",
 		"TIME", "SLOWLOG", "MULTI", "EXEC", "DISCARD", "BGREWRITEAOF", "ACL",
 		"FLUSHDB", "FLUSHALL", "CONFIG", "SHUTDOWN", "PUBSUB", "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE",
-		"SAVE", "BGSAVE", "LASTSAVE", "CLUSTER", "REPLICAOF", "SLAVEOF", "REPLCONF", "ROLE":
+		"SAVE", "BGSAVE", "LASTSAVE", "CLUSTER", "REPLICAOF", "SLAVEOF", "REPLCONF", "ROLE", "SCRIPT":
 		return nil
+	case "EVAL", "EVALSHA":
+		if len(args) < 2 {
+			return nil
+		}
+		numKeys, err := strconv.Atoi(args[1])
+		if err != nil || numKeys <= 0 || len(args) < 2+numKeys {
+			return nil
+		}
+		return args[2 : 2+numKeys]
 	case "MGET", "DEL", "EXISTS":
 		return args
 	case "MSET":

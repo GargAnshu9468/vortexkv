@@ -230,3 +230,31 @@ async function main() {
 }
 main();
 ```
+
+---
+
+## 📡 Background Gossip Bus & Automatic Failover
+
+VortexKV nodes continuously communicate out-of-band over a binary TCP bus operating on `port + 10000` (e.g. `17379` for wire port `7379`).
+
+### Heartbeat Protocol & Framing
+- **Magic Framing**: Custom high-throughput `VBUS` binary header.
+- **Payload**: Exchanges current config epoch, 2048-byte hash slot bitmap (16,384 slots), and peer health reports.
+- **Heartbeat Rate**: Sends ping packets every 250ms with 400ms connection timeout.
+
+### Failure Detection (`PFAIL` & `FAIL`)
+- **PFAIL (Possible Failure)**: If a node does not respond to heartbeats within `nodeTimeout` (default 2000ms), it is marked `PFAIL` (`fail?` in `CLUSTER NODES`).
+- **FAIL (Confirmed Failure)**: When a majority of active cluster masters observe and acknowledge `PFAIL` for a node, the detecting master promotes the status to `FAIL` and broadcasts a `TypeFail` packet. All cluster nodes immediately update their topology table to `disconnected` and `fail`.
+
+### Autonomous Replica Election & Failover
+- When a replica detects its designated master is in `FAIL` state:
+  1. The replica waits a short randomized delay (500ms) to avoid split-vote ties.
+  2. The replica increments `CurrentEpoch` and broadcasts `TypeFailoverAuthReq` to all active masters on the gossip bus.
+  3. Masters verify the candidate's epoch, verify the target master is indeed `FAIL`, and return `TypeFailoverAuthAck`.
+  4. Upon securing majority master votes, the candidate replica wins the election.
+  5. The promoted replica automatically:
+     - Switches role to `master` (`REPLICAOF NO ONE`).
+     - Takes over all 16,384 hash slots owned by the failed master.
+     - Broadcasts an updated `PONG` announcement with new slot ownership to the entire cluster.
+     - Commits new topology to `nodes.conf`.
+

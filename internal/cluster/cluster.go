@@ -18,14 +18,23 @@ import (
 // ClusterManager coordinates distributed node membership, slot routing,
 // configuration persistence, and client redirection.
 type ClusterManager struct {
-	mu           sync.RWMutex
-	Enabled      bool
-	Self         *ClusterNode
-	Nodes        map[string]*ClusterNode // Keyed by 40-char Node ID
-	SlotMap      [16384]*ClusterNode     // Direct slot -> owning master node
-	ConfigFile   string
-	CurrentEpoch uint64
-	AuthPass     string
+	mu            sync.RWMutex
+	Enabled       bool
+	Self          *ClusterNode
+	Nodes         map[string]*ClusterNode // Keyed by 40-char Node ID
+	SlotMap       [16384]*ClusterNode     // Direct slot -> owning master node
+	ConfigFile    string
+	CurrentEpoch  uint64
+	LastVoteEpoch uint64
+	AuthPass      string
+
+	// Cluster Bus & Gossip fields
+	BusListener net.Listener
+	BusRunning  bool
+	busStop     chan struct{}
+	NodeTimeout time.Duration
+	OnPromote   func()
+	failReports map[string]map[string]time.Time // targetNodeID -> reporterNodeID -> timestamp
 }
 
 // NewClusterManager instantiates a cluster manager for the local node.
@@ -51,6 +60,8 @@ func NewClusterManager(ip string, port, busPort int, configFile string) *Cluster
 		Nodes:        make(map[string]*ClusterNode),
 		ConfigFile:   configFile,
 		CurrentEpoch: 1,
+		NodeTimeout:  DefaultNodeTimeout,
+		failReports:  make(map[string]map[string]time.Time),
 	}
 	cm.Nodes[self.ID] = self
 

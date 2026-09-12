@@ -4,16 +4,23 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release Tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
 
 permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build & Publish Release Assets
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: linux
@@ -40,7 +47,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-          cache: false
+          cache: true
+
+      - name: Determine Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
 
       - name: Compile Multi-Platform Binaries
         env:
@@ -48,30 +65,76 @@ jobs:
           GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: 0
         run: |
-          mkdir -p build_dist
+          TAG="${{ steps.version.outputs.TAG }}"
+          PKG_NAME="vortexkv-${TAG}-${{ matrix.os }}-${{ matrix.arch }}"
+          mkdir -p "$PKG_NAME"
+
           BINARY_EXT=""
           if [ "${{ matrix.os }}" = "windows" ]; then
             BINARY_EXT=".exe"
           fi
-          go build -ldflags="-s -w" -o build_dist/vortex-server${BINARY_EXT} ./cmd/vortex-server
-          go build -ldflags="-s -w" -o build_dist/vortex-cli${BINARY_EXT} ./cmd/vortex-cli
-          cp README.md build_dist/
-          cp vortex.conf build_dist/
 
-      - name: Archive Artifacts
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          PKG_NAME="vortexkv-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}"
-          mv build_dist "$PKG_NAME"
+          go build -trimpath -ldflags="-s -w -X main.version=${TAG}" -o "$PKG_NAME/vortex-server${BINARY_EXT}" ./cmd/vortex-server
+          go build -trimpath -ldflags="-s -w -X main.version=${TAG}" -o "$PKG_NAME/vortex-cli${BINARY_EXT}" ./cmd/vortex-cli
+
+          [ -f README.md ] && cp README.md "$PKG_NAME/"
+          [ -f LICENSE ] && cp LICENSE "$PKG_NAME/"
+          [ -f vortex.conf ] && cp vortex.conf "$PKG_NAME/"
+
           if [ "${{ matrix.archive }}" = "zip" ]; then
             zip -r "${PKG_NAME}.zip" "$PKG_NAME"
           else
             tar -czvf "${PKG_NAME}.tar.gz" "$PKG_NAME"
           fi
 
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v1
+      - name: Upload Package Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: package-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
             vortexkv-*.tar.gz
             vortexkv-*.zip
+          retention-days: 1
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Determine Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Download All Package Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: package-*
+          merge-multiple: true
+
+      - name: Generate SHA256 Checksums
+        working-directory: dist
+        run: |
+          sha256sum * > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: "VortexKV Release ${{ steps.version.outputs.TAG }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/*
