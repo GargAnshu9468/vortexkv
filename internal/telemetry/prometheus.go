@@ -9,7 +9,7 @@ import (
 // PrometheusMetrics generates a standard Prometheus 0.0.4 text exposition
 // of VortexKV's live telemetry, compatible with Prometheus scrapers, OpenTelemetry,
 // Datadog, and cloud monitoring agents.
-func (t *Telemetry) PrometheusMetrics(totalKeys int64) []byte {
+func (t *Telemetry) PrometheusMetrics(totalKeys int64, replRole string, connectedReplicas int, replOffset int64) []byte {
 	snap := t.GetSnapshot(totalKeys)
 
 	var b bytes.Buffer
@@ -23,6 +23,23 @@ func (t *Telemetry) PrometheusMetrics(totalKeys int64) []byte {
 	b.WriteString("# HELP vortex_uptime_seconds Total uptime of the VortexKV engine in seconds\n")
 	b.WriteString("# TYPE vortex_uptime_seconds counter\n")
 	fmt.Fprintf(&b, "vortex_uptime_seconds %d\n\n", snap.UptimeSeconds)
+
+	// Replication metrics
+	b.WriteString("# HELP vortex_replication_role Cluster role (1 for master, 0 for replica)\n")
+	b.WriteString("# TYPE vortex_replication_role gauge\n")
+	roleVal := 1
+	if replRole == "slave" || replRole == "replica" {
+		roleVal = 0
+	}
+	fmt.Fprintf(&b, "vortex_replication_role %d\n\n", roleVal)
+
+	b.WriteString("# HELP vortex_connected_replicas Number of connected replica nodes\n")
+	b.WriteString("# TYPE vortex_connected_replicas gauge\n")
+	fmt.Fprintf(&b, "vortex_connected_replicas %d\n\n", connectedReplicas)
+
+	b.WriteString("# HELP vortex_master_repl_offset Current replication offset in bytes\n")
+	b.WriteString("# TYPE vortex_master_repl_offset counter\n")
+	fmt.Fprintf(&b, "vortex_master_repl_offset %d\n\n", replOffset)
 
 	// Connected clients
 	b.WriteString("# HELP vortex_connected_clients Current number of active client connections\n")

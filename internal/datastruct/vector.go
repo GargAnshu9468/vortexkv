@@ -56,6 +56,18 @@ func (vi *VectorIndex) Get(id string) ([]float32, bool) {
 	return vec, ok
 }
 
+func (vi *VectorIndex) GetAll() map[string][]float32 {
+	vi.mu.RLock()
+	defer vi.mu.RUnlock()
+	res := make(map[string][]float32, len(vi.Vectors))
+	for k, v := range vi.Vectors {
+		c := make([]float32, len(v))
+		copy(c, v)
+		res[k] = c
+	}
+	return res
+}
+
 func (vi *VectorIndex) Delete(id string) bool {
 	vi.mu.Lock()
 	defer vi.mu.Unlock()

@@ -13,6 +13,7 @@ import (
 
 	"github.com/vortexkv/vortexkv/internal/engine"
 	"github.com/vortexkv/vortexkv/internal/persistence"
+	"github.com/vortexkv/vortexkv/internal/replication"
 	"github.com/vortexkv/vortexkv/internal/server"
 	"github.com/vortexkv/vortexkv/internal/web"
 )
@@ -36,6 +37,10 @@ func main() {
 	maxclients := flag.Int64("maxclients", 10000, "Maximum concurrent client connections")
 	tlsCert := flag.String("tls-cert", "", "Path to TLS certificate file (enables TLS on wire port)")
 	tlsKey := flag.String("tls-key", "", "Path to TLS private key file")
+
+	replicaof := flag.String("replicaof", "", "Master address to replicate from (e.g. '127.0.0.1:7379' or '127.0.0.1 7379')")
+	masterauth := flag.String("masterauth", "", "Password to authenticate with master node")
+	replicaReadOnly := flag.Bool("replica-read-only", true, "Enforce read-only access on replica node")
 
 	webEnabled := flag.Bool("web-enabled", true, "Enable embedded Web Studio dashboard")
 	webPort := flag.Int("web-port", 7380, "Port for Visual Studio Web Dashboard & WebSockets (default: 7380)")
@@ -72,6 +77,26 @@ func main() {
 	eng.SetMasterPassword(masterPass)
 	eng.MaxMemory = parseMemory(*maxmemoryStr)
 
+	if eng.Replication != nil {
+		eng.Replication.ListeningPort = *port
+		eng.Replication.ReadOnly = *replicaReadOnly
+
+		if *replicaof != "" {
+			parts := strings.Fields(strings.ReplaceAll(*replicaof, ":", " "))
+			if len(parts) >= 2 {
+				mHost := parts[0]
+				mPort, err := strconv.Atoi(parts[1])
+				if err == nil {
+					auth := *masterauth
+					if auth == "" {
+						auth = os.Getenv("VORTEX_MASTERAUTH")
+					}
+					eng.Replication.ConnectToMaster(mHost, mPort, auth)
+				}
+			}
+		}
+	}
+
 	addr := fmt.Sprintf("%s:%d", *bind, *port)
 	tcpServer := server.NewTCPServer(addr, eng)
 	tcpServer.MaxClients = *maxclients
@@ -107,6 +132,12 @@ func main() {
 		fmt.Printf("\033[38;2;57;255;20m[VortexKV]\033[0m 🔒 Security: Password authentication (requirepass) ACTIVE\n")
 	} else {
 		fmt.Printf("\033[38;2;255;170;0m[VortexKV]\033[0m ⚠️ Security: Running without password (use -requirepass in production)\n")
+	}
+
+	if eng.Replication != nil && eng.Replication.Role == replication.RoleReplica {
+		fmt.Printf("\033[38;2;255;170;0m[VortexKV]\033[0m 🔁 Cluster Role: REPLICA of %s:%d (read-only: %v)\n", eng.Replication.MasterHost, eng.Replication.MasterPort, eng.Replication.ReadOnly)
+	} else if eng.Replication != nil {
+		fmt.Printf("\033[38;2;0;243;255m[VortexKV]\033[0m 👑 Cluster Role: MASTER node (Replication ID: %s)\n", eng.Replication.MasterReplID[:8])
 	}
 
 	if eng.MaxMemory > 0 {

@@ -370,10 +370,18 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	totalKeys := s.engine.Keyspace.TotalKeys()
 	snap := s.engine.Telemetry.GetSnapshot(totalKeys)
+	role := "master"
+	replicas := 0
+	if s.engine.Replication != nil {
+		role = string(s.engine.Replication.Role)
+		replicas = s.engine.Replication.GetConnectedReplicasCount()
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":         "healthy",
 		"engine":         "VortexKV",
 		"version":        "1.0.0-PROD",
+		"role":           role,
+		"replicas":       replicas,
 		"uptime_seconds": snap.UptimeSeconds,
 		"keys":           snap.TotalKeys,
 		"connections":    snap.ActiveConnections,
@@ -391,7 +399,15 @@ func (s *Server) handlePrometheusMetrics(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	totalKeys := s.engine.Keyspace.TotalKeys()
-	data := s.engine.Telemetry.PrometheusMetrics(totalKeys)
+	role := "master"
+	replicas := 0
+	offset := int64(0)
+	if s.engine.Replication != nil {
+		role = string(s.engine.Replication.Role)
+		replicas = s.engine.Replication.GetConnectedReplicasCount()
+		offset = s.engine.Replication.MasterOffset.Load()
+	}
+	data := s.engine.Telemetry.PrometheusMetrics(totalKeys, role, replicas, offset)
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)

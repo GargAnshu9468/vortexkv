@@ -12,6 +12,7 @@ Welcome to the official **VortexKV** technical documentation. VortexKV is an ult
 | [🔌 **Client SDK Guides**](./clients.md) | Connect to VortexKV in Python, Node.js, Go, Java/Spring, Rust, and C# using existing Redis libraries. |
 | [📖 **Command Reference**](./commands.md) | Comprehensive command specification including Core KV, Hashes, Lists, Sets, Sorted Sets, ACL, and AI Vectors. |
 | [🛡️ **Production Hardening**](./production-hardening.md) | Essential Linux kernel parameters, memory limits, TLS certificates, systemd services, and backup policies. |
+| [🔁 **Replication & High Availability**](./replication.md) | Master-replica asynchronous replication (PSYNC, REPLCONF), failover, read scaling, and clustering. |
 | [⚙️ **Architecture Internals**](./architecture.md) | Deep dive into lock-striped sharding (64 shards), sub-millisecond TTL timing wheels, and the RESP parser. |
 
 ---

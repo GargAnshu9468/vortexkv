@@ -24,6 +24,7 @@
 - ⏱️ **Zero-Alloc Active & Passive TTL Expiration**: Sub-millisecond timing wheel and probabilistic active sampling.
 - 📦 **Zero-Concern Production Packaging**: Includes multi-stage `Dockerfile`, `systemd` service unit (`vortexkv.service`), and production template `vortex.conf`.
 - 💾 **Append-Only File (AOF) Durability**: Complete durability with configurable fsync policies (`always`, `everysec`, `no`).
+- 🔁 **Master-Replica Asynchronous Replication**: Redis 6+ compatible `PSYNC`, `REPLCONF`, and `REPLICAOF` for horizontal read scaling, live command streaming, and instant failover (`REPLICAOF NO ONE`).
 - 📡 **Real-time Web Studio & WebSocket Stream**: Embedded SPA dashboard running on port `7380` with zero external dependencies.
 - 📊 **Cloud-Native Prometheus Observability**: Built-in Prometheus text exporter on `GET /metrics` and Kubernetes liveness/readiness probe on `GET /healthz`.
 - 🚢 **Production Ready Orchestration**: Official Kubernetes Helm Chart (`deployments/helm/vortexkv`) and multi-container `docker-compose.yml` with metrics profiling.
@@ -35,6 +36,7 @@
 Comprehensive production guides, client SDK integration code, and architectural references are available in the **[`/docs`](./docs/README.md)** directory:
 
 - 🚀 [**Quickstart Guide**](./docs/quickstart.md) — 5-minute setup and tour.
+- 🔁 [**Replication & High Availability Guide**](./docs/replication.md) — PSYNC, read-scaling, and failover topologies.
 - 🔌 [**Client SDK Integration Guides**](./docs/clients.md) — Drop-in code for Python, Node.js, Go, Java, Rust, and C#.
 - 📖 [**Full Command Reference**](./docs/commands.md) — Standard RESP commands and AI vector primitives.
 - 🛡️ [**Production Hardening Guide**](./docs/production-hardening.md) — Linux kernel tuning, memory limits, TLS, and systemd.

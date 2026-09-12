@@ -1,9 +1,11 @@
 package engine
 
 import (
+	"fmt"
 	"hash/fnv"
 	"math/rand"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -433,6 +435,87 @@ func (ks *Keyspace) FlushDB() {
 	ks.keyCount.Store(0)
 }
 
+// DumpAllCommands serializes all active keyspace entries into standard write commands
+// for full resynchronization of connecting replicas.
+func (ks *Keyspace) DumpAllCommands() [][]string {
+	var cmds [][]string
+	now := time.Now().UnixMilli()
+
+	for i := 0; i < NumShards; i++ {
+		shard := ks.shards[i]
+		shard.mu.RLock()
+		for k, entry := range shard.entries {
+			if entry.IsExpired(now) {
+				continue
+			}
+
+			switch entry.Type {
+			case TypeString:
+				if s, ok := entry.Value.(string); ok {
+					cmds = append(cmds, []string{"SET", k, s})
+				}
+			case TypeHash:
+				if h, ok := entry.Value.(*datastruct.Hash); ok {
+					fields := h.GetAll()
+					if len(fields) > 0 {
+						hsetArgs := []string{"HSET", k}
+						for f, v := range fields {
+							hsetArgs = append(hsetArgs, f, v)
+						}
+						cmds = append(cmds, hsetArgs)
+					}
+				}
+			case TypeList:
+				if l, ok := entry.Value.(*datastruct.List); ok {
+					items := l.Range(0, -1)
+					if len(items) > 0 {
+						rpushArgs := append([]string{"RPUSH", k}, items...)
+						cmds = append(cmds, rpushArgs)
+					}
+				}
+			case TypeSet:
+				if s, ok := entry.Value.(*datastruct.Set); ok {
+					members := s.Members()
+					if len(members) > 0 {
+						saddArgs := append([]string{"SADD", k}, members...)
+						cmds = append(cmds, saddArgs)
+					}
+				}
+			case TypeZSet:
+				if z, ok := entry.Value.(*datastruct.SkipList); ok {
+					items := z.Range(0, -1, false)
+					if len(items) > 0 {
+						zaddArgs := []string{"ZADD", k}
+						for _, it := range items {
+							zaddArgs = append(zaddArgs, strconv.FormatFloat(it.Score, 'f', -1, 64), it.Member)
+						}
+						cmds = append(cmds, zaddArgs)
+					}
+				}
+			case TypeVector:
+				if v, ok := entry.Value.(*datastruct.VectorIndex); ok {
+					for id, vec := range v.GetAll() {
+						vaddArgs := []string{"VADD", k, id}
+						for _, f := range vec {
+							vaddArgs = append(vaddArgs, fmt.Sprintf("%f", f))
+						}
+						cmds = append(cmds, vaddArgs)
+					}
+				}
+			}
+
+			// If key has TTL, preserve expiration
+			if entry.ExpiresAt > 0 {
+				cmds = append(cmds, []string{"PEXPIREAT", k, strconv.FormatInt(entry.ExpiresAt, 10)})
+			}
+		}
+		shard.mu.RUnlock()
+	}
+
+	return cmds
+}
+
 func (ks *Keyspace) Close() {
 	close(ks.stopReaper)
 }
+

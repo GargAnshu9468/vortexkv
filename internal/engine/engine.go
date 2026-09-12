@@ -12,6 +12,7 @@ import (
 	"github.com/vortexkv/vortexkv/internal/datastruct"
 	"github.com/vortexkv/vortexkv/internal/persistence"
 	"github.com/vortexkv/vortexkv/internal/pubsub"
+	"github.com/vortexkv/vortexkv/internal/replication"
 	"github.com/vortexkv/vortexkv/internal/resp"
 	"github.com/vortexkv/vortexkv/internal/telemetry"
 )
@@ -29,6 +30,7 @@ type Engine struct {
 	Telemetry      *telemetry.Telemetry
 	AOF            *persistence.AOF
 	ACL            *ACLManager
+	Replication    *replication.ReplicationManager
 	Password       string
 	MaxMemory      uint64 // in bytes; 0 = unlimited
 	EvictionPolicy string // "allkeys-lru", "volatile-lru", "noeviction"
@@ -65,7 +67,7 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy) (*Engine, er
 		})
 	}
 
-	return &Engine{
+	eng := &Engine{
 		Keyspace:       ks,
 		Broker:         broker,
 		Telemetry:      tele,
@@ -73,7 +75,17 @@ func NewEngine(aofPath string, fsyncPolicy persistence.FsyncPolicy) (*Engine, er
 		ACL:            acl,
 		EvictionPolicy: "allkeys-lru",
 		clientSessions: make(map[string]*ClientSession),
-	}, nil
+	}
+	eng.Replication = replication.NewReplicationManager(
+		7379,
+		func(args []string) {
+			eng.ExecuteCommand("replica_stream", args)
+		},
+		func() [][]string {
+			return eng.Keyspace.DumpAllCommands()
+		},
+	)
+	return eng, nil
 }
 
 func (e *Engine) SetMasterPassword(pass string) {
@@ -141,6 +153,13 @@ func (e *Engine) ExecuteCommand(connID string, args []string) resp.Value {
 		}
 	}
 
+	// Read-only replica guard: Reject mutating commands if in replica mode
+	if e.Replication != nil && e.Replication.ReadOnly && connID != "replica_stream" && connID != "aof_replay" {
+		if isWriteCommand(cmdName) {
+			return resp.Error("READONLY You can't write against a read only replica.")
+		}
+	}
+
 	// Transaction buffering if client is inside MULTI
 	if session.InMulti {
 		if cmdName == "EXEC" {
@@ -188,6 +207,11 @@ func (e *Engine) ExecuteCommand(connID string, args []string) resp.Value {
 		_ = e.AOF.WriteCommand(args)
 	}
 
+	// Broadcast mutating commands to active replicas
+	if isWrite && e.Replication != nil && connID != "replica_stream" {
+		e.Replication.Broadcast(args)
+	}
+
 	return val
 }
 
@@ -207,8 +231,26 @@ func (e *Engine) executeTransaction(connID string, session *ClientSession) resp.
 		if isWrite && e.AOF != nil {
 			_ = e.AOF.WriteCommand(cmdArgs)
 		}
+		if isWrite && e.Replication != nil && connID != "replica_stream" {
+			e.Replication.Broadcast(cmdArgs)
+		}
 	}
 	return resp.Array(results)
+}
+
+func isWriteCommand(cmd string) bool {
+	switch cmd {
+	case "SET", "MSET", "DEL", "EXPIRE", "PEXPIREAT", "EXPIREAT", "PERSIST",
+		"INCR", "INCRBY", "DECR", "DECRBY", "APPEND",
+		"HSET", "HMSET", "HDEL", "HINCRBY",
+		"LPUSH", "RPUSH", "LPOP", "RPOP", "LSET", "LTRIM",
+		"SADD", "SREM", "SPOP",
+		"ZADD", "ZREM", "ZINCRBY", "ZREMRANGEBYSCORE",
+		"VADD", "FLUSHDB", "FLUSHALL", "XADD":
+		return true
+	default:
+		return false
+	}
 }
 
 func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value, bool) {
@@ -290,8 +332,58 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 	case "SELECT":
 		return resp.SimpleString("OK"), false
 
+	case "REPLICAOF", "SLAVEOF":
+		if len(args) < 2 {
+			return resp.Error("ERR wrong number of arguments for 'replicaof' command"), false
+		}
+		if strings.ToUpper(args[0]) == "NO" && strings.ToUpper(args[1]) == "ONE" {
+			if e.Replication != nil {
+				e.Replication.PromoteToMaster()
+			}
+			return resp.SimpleString("OK"), false
+		}
+		port, err := strconv.Atoi(args[1])
+		if err != nil {
+			return resp.Error("ERR invalid port"), false
+		}
+		if e.Replication != nil {
+			e.Replication.ConnectToMaster(args[0], port, e.Password)
+		}
+		return resp.SimpleString("OK"), false
+
+	case "REPLCONF":
+		return resp.SimpleString("OK"), false
+
+	case "ROLE":
+		if e.Replication == nil || e.Replication.Role == replication.RoleMaster {
+			offset := int64(0)
+			if e.Replication != nil {
+				offset = e.Replication.MasterOffset.Load()
+			}
+			var slaves []resp.Value
+			return resp.Array([]resp.Value{
+				resp.BulkString("master"),
+				resp.Integer(offset),
+				resp.Array(slaves),
+			}), false
+		}
+		linkStatus := "up"
+		return resp.Array([]resp.Value{
+			resp.BulkString("slave"),
+			resp.BulkString(e.Replication.MasterHost),
+			resp.Integer(int64(e.Replication.MasterPort)),
+			resp.BulkString(linkStatus),
+			resp.Integer(e.Replication.MasterOffset.Load()),
+		}), false
+
 	case "INFO":
 		infoText := e.Telemetry.GenerateRedisInfo(e.Keyspace.TotalKeys())
+		if e.Replication != nil {
+			if len(args) > 0 && strings.ToLower(args[0]) == "replication" {
+				return resp.BulkString(e.Replication.GenerateReplicationInfo()), false
+			}
+			infoText += "\r\n" + e.Replication.GenerateReplicationInfo()
+		}
 		return resp.BulkString(infoText), false
 
 	case "DBSIZE":

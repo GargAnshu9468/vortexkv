@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -110,6 +111,7 @@ func (s *TCPServer) handleConnection(connID string, conn net.Conn) {
 	// Per-connection pubsub state
 	var subChans []string
 	var subQueue pubsub.Subscriber
+	var listeningPort int
 
 	cleanupPubSub := func() {
 		if subQueue != nil {
@@ -140,6 +142,28 @@ func (s *TCPServer) handleConnection(connID string, conn net.Conn) {
 			_ = writer.WriteOK()
 			_ = writer.Flush()
 			return
+		}
+
+		// Track replica listening port
+		if cmdUpper == "REPLCONF" && len(args) >= 3 && strings.ToLower(args[1]) == "listening-port" {
+			if p, err := strconv.Atoi(args[2]); err == nil {
+				listeningPort = p
+			}
+		}
+
+		// Handle PSYNC / SYNC replication handshake
+		if cmdUpper == "PSYNC" || cmdUpper == "SYNC" {
+			session := s.engine.GetClientSession(connID)
+			if s.engine.Password != "" && !session.Authenticated {
+				_ = writer.WriteError("NOAUTH Authentication required.")
+				_ = writer.Flush()
+				continue
+			}
+
+			if s.engine.Replication != nil {
+				_ = s.engine.Replication.HandlePSync(conn, conn.RemoteAddr().String(), listeningPort)
+				return
+			}
 		}
 
 		// Handle SUBSCRIBE
