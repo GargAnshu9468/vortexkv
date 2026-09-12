@@ -561,8 +561,88 @@
     .type-list { background: rgba(57, 255, 20, 0.15); color: var(--neon-green); border: 1px solid rgba(57, 255, 20, 0.4); }
     .type-set { background: rgba(255, 170, 0, 0.15); color: var(--neon-amber); border: 1px solid rgba(255, 170, 0, 0.4); }
     .type-zset { background: rgba(255, 0, 85, 0.15); color: var(--neon-rose); border: 1px solid rgba(255, 0, 85, 0.4); }
-    .type-vector { background: rgba(0, 162, 255, 0.2); color: #00d4ff; border: 1px solid #00d4ff; }
-    .type-stream { background: rgba(255, 255, 255, 0.15); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
+    .type-stream { background: rgba(0, 243, 255, 0.18); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.5); }
+
+    /* Streams & PEL Studio Styles */
+    .stream-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .stream-card:hover {
+      background: rgba(0, 243, 255, 0.05);
+      border-color: rgba(0, 243, 255, 0.4);
+      transform: translateX(2px);
+    }
+    .stream-card.active {
+      background: rgba(0, 243, 255, 0.08);
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+    }
+    .stream-field-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+    }
+    .stream-field-key {
+      color: var(--neon-cyan);
+      font-weight: 600;
+    }
+    .stream-field-val {
+      color: #fff;
+    }
+    .stream-entry-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      transition: border-color 0.15s ease;
+    }
+    .stream-entry-card:hover {
+      border-color: rgba(176, 38, 255, 0.4);
+      background: rgba(176, 38, 255, 0.03);
+    }
+    .consumer-group-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .worker-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+    }
+    .worker-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--neon-green);
+    }
 
     /* Modal / Drawer */
     .modal-backdrop {
@@ -811,6 +891,9 @@
         width: 100% !important;
         justify-content: center;
       }
+      #streamsLayoutGrid {
+        grid-template-columns: 1fr !important;
+      }
     }
 
     /* Small Mobile Screens (<= 480px) */
@@ -954,6 +1037,7 @@
       <div class="nav-tabs">
         <button class="nav-tab active" data-tab="studio">🌌 Interactive Studio & Galaxy</button>
         <button class="nav-tab" data-tab="keyspace">🗂️ Keyspace Table</button>
+        <button class="nav-tab" data-tab="streams">🌊 Streams & PEL</button>
         <button class="nav-tab" data-tab="vectors">🧠 AI Vector Sandbox</button>
         <button class="nav-tab" data-tab="slowlog">🔥 SlowLog & Telemetry</button>
         <button class="nav-tab" data-tab="acl">👥 Access & Users (ACL)</button>
@@ -1055,6 +1139,143 @@
               <tr><td colspan="5" style="text-align:center; color:var(--text-dim);">Loading keyspace...</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Visual Streams Studio & Consumer Group Monitor -->
+    <div id="tabContentStreams" style="display:none;">
+      <div class="panel" style="margin-bottom: 1.2rem;">
+        <div class="panel-header" style="flex-wrap:wrap; gap:0.8rem;">
+          <div>
+            <span class="panel-title">🌊 Visual Streams Studio & Consumer Group Monitor</span>
+            <div style="font-size: 0.82rem; color: var(--text-dim); margin-top: 0.2rem;">
+              Append-Only Event Streams, Consumer Groups Roster, and Real-Time Worker PEL (Pending Entries List) Inspector
+            </div>
+          </div>
+          <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; color:var(--text-dim); cursor:pointer; user-select:none; margin-right:0.4rem;">
+              <input type="checkbox" id="streamsAutoPoll" checked style="accent-color:var(--neon-cyan); cursor:pointer;" onchange="toggleStreamsAutoPoll()">
+              Live Stream (3s)
+            </label>
+            <button class="btn" onclick="openStreamGroupModal()">+ New Consumer Group</button>
+            <button class="btn btn-primary" onclick="openStreamProducerModal()">+ Publish Event (XADD)</button>
+            <button class="btn" onclick="loadStreamsData()">⟳ Refresh</button>
+          </div>
+        </div>
+
+        <!-- Streams Studio Split Layout -->
+        <div style="display:grid; grid-template-columns: 320px 1fr; gap: 1.2rem; align-items: flex-start; margin-top: 1rem;" id="streamsLayoutGrid">
+          
+          <!-- LEFT COLUMN: Streams Directory & Summary -->
+          <div style="display:flex; flex-direction:column; gap:1rem;">
+            <!-- Active Streams Header & Search -->
+            <div style="background:rgba(0,0,0,0.35); border:1px solid var(--border-subtle); border-radius:8px; padding:0.85rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                <span style="font-size:0.75rem; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">Active Streams</span>
+                <span id="streamsCountBadge" style="background:rgba(0,243,255,0.15); color:var(--neon-cyan); font-size:0.75rem; font-weight:600; padding:2px 8px; border-radius:10px; border:1px solid rgba(0,243,255,0.3);">0 streams</span>
+              </div>
+              <input type="text" id="streamSearchInput" placeholder="Filter streams by key..." oninput="renderStreamsList()" 
+                     style="width:100%; background:#121622; border:1px solid var(--border-subtle); color:#fff; padding:0.55rem 0.75rem; border-radius:6px; font-family:var(--font-mono); font-size:0.8rem;" />
+            </div>
+
+            <!-- Streams Scroll List -->
+            <div id="streamsListContainer" style="display:flex; flex-direction:column; gap:0.6rem; max-height:460px; overflow-y:auto; padding-right:2px;">
+              <div style="text-align:center; color:var(--text-dim); font-size:0.85rem; padding:2.5rem 1rem; line-height:1.5;">
+                No streams detected in keyspace.<br><br>
+                <button class="btn btn-primary" onclick="seedDemoStream()" style="font-size:0.8rem; margin:auto; display:inline-flex;">🚀 Seed Demo Stream (Orders)</button>
+              </div>
+            </div>
+
+            <!-- Active Stream Details Card -->
+            <div id="activeStreamDetailsCard" style="display:none; background:rgba(0,243,255,0.03); border:1px solid rgba(0,243,255,0.2); border-radius:8px; padding:1rem;">
+              <div style="font-size:0.75rem; color:var(--neon-cyan); font-weight:600; text-transform:uppercase; margin-bottom:0.65rem; letter-spacing:0.5px;">Selected Stream Metadata</div>
+              <div style="display:flex; flex-direction:column; gap:0.45rem; font-size:0.8rem; font-family:var(--font-mono);">
+                <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-dim);">KEY:</span> <span id="metaStreamKey" style="color:#fff; font-weight:600;">-</span></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-dim);">LENGTH:</span> <span id="metaStreamLen" style="color:var(--neon-green); font-weight:600;">-</span></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-dim);">FIRST ID:</span> <span id="metaStreamFirstID" style="color:var(--neon-purple);">-</span></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-dim);">LAST ID:</span> <span id="metaStreamLastID" style="color:var(--neon-cyan); font-weight:600;">-</span></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-dim);">GROUPS:</span> <span id="metaStreamGroups" style="color:var(--neon-amber); font-weight:600;">-</span></div>
+              </div>
+              <button class="btn" style="width:100%; margin-top:0.85rem; font-size:0.75rem; justify-content:center;" onclick="copyStreamXRange()">📋 Copy XRANGE Command</button>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: Event Timeline & Consumer Groups / PEL -->
+          <div style="display:flex; flex-direction:column; gap:1.2rem;">
+
+            <!-- SECTION A: Event Timeline & Message Feed -->
+            <div style="background:rgba(0,0,0,0.35); border:1px solid var(--border-subtle); border-radius:10px; padding:1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.6rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                  <span style="font-weight:600; color:var(--neon-cyan); font-size:0.95rem;">📡 Live Event Timeline</span>
+                  <span id="selectedStreamBadge" style="font-family:var(--font-mono); font-size:0.8rem; color:var(--neon-purple); background:rgba(176,38,255,0.1); padding:2px 8px; border-radius:4px; border:1px solid rgba(176,38,255,0.3);">Select a stream</span>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                  <label style="font-size:0.75rem; color:var(--text-dim);">Limit:</label>
+                  <select id="streamMsgCount" onchange="loadCurrentStreamMessages()" style="background:#161823; border:1px solid var(--border-subtle); color:#fff; border-radius:4px; font-size:0.75rem; padding:3px 6px;">
+                    <option value="20">20</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                  </select>
+                  <button class="btn" id="streamViewToggleBtn" onclick="toggleStreamViewMode()" style="font-size:0.75rem; padding:3px 8px;">View: Structured</button>
+                </div>
+              </div>
+
+              <!-- Message Timeline List -->
+              <div id="streamMessagesFeed" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:0.6rem; padding-right:4px;">
+                <div style="text-align:center; color:var(--text-dim); padding:2rem; font-size:0.85rem;">Select a stream on the left to view events.</div>
+              </div>
+            </div>
+
+            <!-- SECTION B: Consumer Groups & Worker Health -->
+            <div style="background:rgba(0,0,0,0.35); border:1px solid var(--border-subtle); border-radius:10px; padding:1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.6rem;">
+                <div>
+                  <span style="font-weight:600; color:var(--neon-purple); font-size:0.95rem;">👥 Consumer Groups & Worker Health</span>
+                  <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.2rem;">Parallel worker rosters, delivery offsets, and idle activity</div>
+                </div>
+                <button class="btn" onclick="openStreamGroupModal()" style="font-size:0.75rem;">+ Add Group</button>
+              </div>
+
+              <!-- Consumer Groups Cards Container -->
+              <div id="streamGroupsCardsContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:0.8rem; margin-bottom:1.2rem;">
+                <div style="color:var(--text-dim); font-size:0.85rem; padding:0.5rem;">No consumer groups found for this stream.</div>
+              </div>
+
+              <!-- Worker PEL (Pending Entries List) -->
+              <div style="border-top:1px solid var(--border-subtle); padding-top:0.9rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.7rem; flex-wrap:wrap; gap:0.5rem;">
+                  <div>
+                    <span style="font-weight:600; color:var(--neon-amber); font-size:0.9rem;">⏳ Worker PEL (Pending Entries List)</span>
+                    <span style="font-size:0.75rem; color:var(--text-dim); margin-left:0.5rem;">Unacknowledged messages awaiting processing</span>
+                  </div>
+                  <button id="btnAckAllPEL" class="btn" onclick="ackAllPendingMessages()" style="display:none; font-size:0.75rem; border-color:var(--neon-green); color:var(--neon-green);">✓ XACK All Pending</button>
+                </div>
+
+                <div class="keys-table-container" style="max-height:240px;">
+                  <table class="v-table">
+                    <thead>
+                      <tr>
+                        <th>Group</th>
+                        <th>Message ID</th>
+                        <th>Consumer Worker</th>
+                        <th>Delivery / Idle</th>
+                        <th>Attempts</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="streamPELTableBody">
+                      <tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No pending entries in PEL. All messages acknowledged!</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
         </div>
       </div>
     </div>
@@ -1508,6 +1729,110 @@
     </div>
   </div>
 
+  <!-- Stream Event Producer Modal -->
+  <div class="modal-backdrop" id="streamProducerModal" onclick="if(event.target === this) closeStreamProducerModal();">
+    <div class="modal-box" style="max-width: 600px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="color: var(--neon-cyan); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🚀</span> Publish Event to Stream (XADD)
+        </h3>
+        <button class="btn" onclick="closeStreamProducerModal()" style="padding: 2px 8px;">✕</button>
+      </div>
+
+      <!-- Quick Presets -->
+      <div style="margin-bottom: 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem;">
+        <div style="font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.4rem; font-weight: 600;">Load Schema Preset:</div>
+        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+          <button type="button" class="btn" onclick="applyStreamPreset('orders')" style="font-size: 0.75rem; padding: 3px 8px;">🛒 Orders</button>
+          <button type="button" class="btn" onclick="applyStreamPreset('logs')" style="font-size: 0.75rem; padding: 3px 8px;">📋 System Logs</button>
+          <button type="button" class="btn" onclick="applyStreamPreset('metrics')" style="font-size: 0.75rem; padding: 3px 8px;">📈 Metrics</button>
+          <button type="button" class="btn" onclick="applyStreamPreset('payments')" style="font-size: 0.75rem; padding: 3px 8px;">💳 Payments</button>
+        </div>
+      </div>
+
+      <form onsubmit="event.preventDefault(); submitStreamXAdd();" style="display: flex; flex-direction: column; gap: 0.9rem;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.8rem;">
+          <div>
+            <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">Stream Key</label>
+            <input type="text" id="producerStreamKey" placeholder="e.g. stream:orders" required
+                   style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.6rem 0.8rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.88rem;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">ID (* = Auto)</label>
+            <input type="text" id="producerStreamID" value="*" required
+                   style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.6rem 0.8rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.88rem; text-align: center;">
+          </div>
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <label style="font-size: 0.8rem; color: var(--text-dim);">Payload Fields (Key - Value Pairs)</label>
+            <button type="button" class="btn" onclick="addProducerFieldRow()" style="font-size: 0.72rem; padding: 2px 7px;">+ Add Field</button>
+          </div>
+          <div id="producerFieldsContainer" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 180px; overflow-y: auto; padding-right: 2px;">
+            <!-- Rows injected dynamically -->
+          </div>
+        </div>
+
+        <div id="producerErrMsg" style="color: var(--neon-rose); font-size: 0.8rem; min-height: 1rem;"></div>
+
+        <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.4rem;">
+          <button type="button" class="btn" onclick="closeStreamProducerModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Publish Event (XADD)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Consumer Group Modal -->
+  <div class="modal-backdrop" id="streamGroupModal" onclick="if(event.target === this) closeStreamGroupModal();">
+    <div class="modal-box" style="max-width: 500px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="color: var(--neon-purple); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <span>👥</span> Create Consumer Group (XGROUP)
+        </h3>
+        <button class="btn" onclick="closeStreamGroupModal()" style="padding: 2px 8px;">✕</button>
+      </div>
+
+      <form onsubmit="event.preventDefault(); submitStreamGroupCreate();" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">Target Stream Key</label>
+          <input type="text" id="groupStreamKey" placeholder="e.g. stream:orders" required
+                 style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.65rem 0.85rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.88rem;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">Consumer Group Name</label>
+          <input type="text" id="groupNameInput" placeholder="e.g. order-workers-v1" required
+                 style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.65rem 0.85rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.88rem;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">Starting Delivery ID</label>
+          <div style="display: flex; gap: 0.6rem;">
+            <input type="text" id="groupStartIDInput" value="$" placeholder="$ (new only) or 0 (replay all)" required
+                   style="flex: 1; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.65rem 0.85rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.88rem;">
+            <button type="button" class="btn" onclick="document.getElementById('groupStartIDInput').value='$'">$ (Newest)</button>
+            <button type="button" class="btn" onclick="document.getElementById('groupStartIDInput').value='0'">0 (All)</button>
+          </div>
+          <span style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.3rem; display: block;">
+            Use <b>$</b> to only consume future messages published after group creation, or <b>0</b> to replay historical entries.
+          </span>
+        </div>
+
+        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-dim); cursor: pointer; user-select: none;">
+          <input type="checkbox" id="groupMkStreamCheck" checked style="accent-color: var(--neon-purple); cursor: pointer;">
+          Create stream if it does not exist yet (<code>MKSTREAM</code>)
+        </label>
+
+        <div id="groupErrMsg" style="color: var(--neon-rose); font-size: 0.8rem; min-height: 1rem;"></div>
+
+        <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.4rem;">
+          <button type="button" class="btn" onclick="closeStreamGroupModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, rgba(176,38,255,0.4), rgba(0,243,255,0.3)); border-color: var(--neon-purple);">Create Group</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     // Authentication State Management (Single Login Persistent Session)
     let authToken = localStorage.getItem('vortex_token') || sessionStorage.getItem('vortex_token') || '';
@@ -1636,11 +1961,13 @@
         const target = tab.dataset.tab;
         document.getElementById('tabContentStudio').style.display = target === 'studio' ? 'block' : 'none';
         document.getElementById('tabContentKeyspace').style.display = target === 'keyspace' ? 'block' : 'none';
+        document.getElementById('tabContentStreams').style.display = target === 'streams' ? 'block' : 'none';
         document.getElementById('tabContentVectors').style.display = target === 'vectors' ? 'block' : 'none';
         document.getElementById('tabContentSlowlog').style.display = target === 'slowlog' ? 'block' : 'none';
         document.getElementById('tabContentACL').style.display = target === 'acl' ? 'block' : 'none';
         document.getElementById('tabContentReplication').style.display = target === 'replication' ? 'block' : 'none';
         if (target === 'keyspace') refreshKeysTable();
+        if (target === 'streams') loadStreamsData();
         if (target === 'slowlog') refreshSlowLogs();
         if (target === 'acl') loadACLUsers();
         if (target === 'replication') { loadReplicationData(); loadClusterData(); }
@@ -2617,6 +2944,642 @@
       }
     }
 
+    // ==========================================
+    // Visual Streams Studio & Consumer Group Monitor
+    // ==========================================
+    let currentSelectedStream = null;
+    let streamsPollTimer = null;
+    let streamsCache = [];
+    let streamViewMode = 'structured'; // 'structured' or 'json'
+    let currentStreamMessagesCache = [];
+    let currentStreamGroupsCache = [];
+
+    function toggleStreamsAutoPoll() {
+      const isChecked = document.getElementById('streamsAutoPoll')?.checked;
+      if (isChecked) {
+        if (!streamsPollTimer) {
+          streamsPollTimer = setInterval(() => {
+            const streamsTab = document.getElementById('tabContentStreams');
+            if (streamsTab && streamsTab.style.display !== 'none') {
+              loadStreamsData(true);
+            }
+          }, 3000);
+        }
+      } else {
+        if (streamsPollTimer) {
+          clearInterval(streamsPollTimer);
+          streamsPollTimer = null;
+        }
+      }
+    }
+
+    async function loadStreamsData(silent = false) {
+      try {
+        const res = await authFetch('/api/streams');
+        if (!res.ok) return;
+        const data = await res.json();
+        streamsCache = data.streams || [];
+
+        const badge = document.getElementById('streamsCountBadge');
+        if (badge) badge.innerText = `${streamsCache.length} stream${streamsCache.length === 1 ? '' : 's'}`;
+
+        renderStreamsList();
+
+        if (!currentSelectedStream && streamsCache.length > 0) {
+          selectStream(streamsCache[0].key);
+        } else if (currentSelectedStream) {
+          const exists = streamsCache.some(s => s.key === currentSelectedStream);
+          if (exists) {
+            loadStreamDetails(currentSelectedStream, silent);
+          } else if (streamsCache.length > 0) {
+            selectStream(streamsCache[0].key);
+          } else {
+            currentSelectedStream = null;
+            clearStreamDetailsView();
+          }
+        }
+      } catch (e) {
+        if (!silent) console.error('Error loading streams:', e);
+      }
+    }
+
+    function renderStreamsList() {
+      const container = document.getElementById('streamsListContainer');
+      if (!container) return;
+
+      const searchVal = (document.getElementById('streamSearchInput')?.value || '').toLowerCase().trim();
+      const filtered = streamsCache.filter(s => s.key.toLowerCase().includes(searchVal));
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; color:var(--text-dim); font-size:0.85rem; padding:2.5rem 1rem; line-height:1.5;">
+            ${searchVal ? 'No matching streams found.' : 'No streams detected in keyspace.'}<br><br>
+            <button class="btn btn-primary" onclick="seedDemoStream()" style="font-size:0.8rem; margin:auto; display:inline-flex;">🚀 Seed Demo Stream (Orders)</button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(s => {
+        const isSelected = s.key === currentSelectedStream;
+        return `
+          <div class="stream-card ${isSelected ? 'active' : ''}" onclick="selectStream('${escapeHtml(s.key)}')">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family:var(--font-mono); font-weight:600; color:${isSelected ? 'var(--neon-cyan)' : '#fff'}; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                🌊 ${escapeHtml(s.key)}
+              </span>
+              <span style="font-size:0.72rem; font-family:var(--font-mono); color:var(--neon-green); background:rgba(57,255,20,0.1); padding:1px 6px; border-radius:4px; border:1px solid rgba(57,255,20,0.3);">
+                ${s.length} msgs
+              </span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-dim); font-family:var(--font-mono); margin-top:2px;">
+              <span>Groups: <b style="color:var(--neon-amber);">${s.consumer_groups}</b></span>
+              <span>Last: <span style="color:var(--neon-purple);">${escapeHtml(s.last_entry_id)}</span></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function selectStream(key) {
+      currentSelectedStream = key;
+      renderStreamsList();
+
+      const badge = document.getElementById('selectedStreamBadge');
+      if (badge) badge.innerText = key;
+
+      const detailsCard = document.getElementById('activeStreamDetailsCard');
+      if (detailsCard) detailsCard.style.display = 'block';
+
+      loadStreamDetails(key, false);
+      playTone(580, 'sine', 0.05);
+    }
+
+    function clearStreamDetailsView() {
+      const detailsCard = document.getElementById('activeStreamDetailsCard');
+      if (detailsCard) detailsCard.style.display = 'none';
+
+      const feed = document.getElementById('streamMessagesFeed');
+      if (feed) feed.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding:2rem; font-size:0.85rem;">Select a stream on the left to view events.</div>';
+
+      const groupsContainer = document.getElementById('streamGroupsCardsContainer');
+      if (groupsContainer) groupsContainer.innerHTML = '<div style="color:var(--text-dim); font-size:0.85rem; padding:0.5rem;">No consumer groups found.</div>';
+
+      const pelBody = document.getElementById('streamPELTableBody');
+      if (pelBody) pelBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No pending entries in PEL. All messages acknowledged!</td></tr>';
+      
+      const btnAckAll = document.getElementById('btnAckAllPEL');
+      if (btnAckAll) btnAckAll.style.display = 'none';
+    }
+
+    async function loadStreamDetails(key, silent = false) {
+      if (!key) return;
+      try {
+        const count = document.getElementById('streamMsgCount')?.value || '50';
+        
+        const [msgsRes, groupsRes] = await Promise.all([
+          authFetch(`/api/stream/messages?key=${encodeURIComponent(key)}&count=${count}`),
+          authFetch(`/api/stream/groups?key=${encodeURIComponent(key)}`)
+        ]);
+
+        if (msgsRes.ok) {
+          const msgsData = await msgsRes.json();
+          currentStreamMessagesCache = msgsData.messages || [];
+
+          const elKey = document.getElementById('metaStreamKey');
+          const elLen = document.getElementById('metaStreamLen');
+          const elFirst = document.getElementById('metaStreamFirstID');
+          const elLast = document.getElementById('metaStreamLastID');
+
+          if (elKey) elKey.innerText = msgsData.key;
+          if (elLen) elLen.innerText = msgsData.length;
+          if (elFirst) elFirst.innerText = msgsData.first_id;
+          if (elLast) elLast.innerText = msgsData.last_id;
+
+          renderStreamMessages();
+        }
+
+        if (groupsRes.ok) {
+          const groupsData = await groupsRes.json();
+          currentStreamGroupsCache = groupsData.groups || [];
+
+          const elGroups = document.getElementById('metaStreamGroups');
+          if (elGroups) elGroups.innerText = currentStreamGroupsCache.length;
+
+          renderStreamGroupsAndPEL();
+        }
+      } catch (e) {
+        if (!silent) console.error('Error loading stream details:', e);
+      }
+    }
+
+    function loadCurrentStreamMessages() {
+      if (currentSelectedStream) {
+        loadStreamDetails(currentSelectedStream, false);
+      }
+    }
+
+    function toggleStreamViewMode() {
+      streamViewMode = streamViewMode === 'structured' ? 'json' : 'structured';
+      const btn = document.getElementById('streamViewToggleBtn');
+      if (btn) btn.innerText = `View: ${streamViewMode === 'structured' ? 'Structured' : 'JSON'}`;
+      renderStreamMessages();
+    }
+
+    function renderStreamMessages() {
+      const container = document.getElementById('streamMessagesFeed');
+      if (!container) return;
+
+      if (!currentStreamMessagesCache || currentStreamMessagesCache.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; color:var(--text-dim); padding:2rem; font-size:0.85rem;">
+            Stream is empty. No messages published yet.<br><br>
+            <button class="btn btn-primary" onclick="openStreamProducerModal()" style="font-size:0.8rem; margin:auto;">+ Publish First Event</button>
+          </div>
+        `;
+        return;
+      }
+
+      const reversed = [...currentStreamMessagesCache].reverse();
+
+      container.innerHTML = reversed.map(entry => {
+        let timeStr = '';
+        const idParts = entry.id.split('-');
+        if (idParts[0]) {
+          const m = parseInt(idParts[0], 10);
+          if (!isNaN(m) && m > 1600000000000) {
+            timeStr = new Date(m).toLocaleTimeString();
+          }
+        }
+
+        if (streamViewMode === 'json') {
+          return `
+            <div class="stream-entry-card">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--neon-cyan); font-weight:600;">
+                  ID: ${escapeHtml(entry.id)}
+                </span>
+                ${timeStr ? `<span style="font-size:0.72rem; color:var(--text-dim); font-family:var(--font-mono);">${timeStr}</span>` : ''}
+              </div>
+              <pre style="margin:0; background:rgba(0,0,0,0.5); padding:0.6rem; border-radius:6px; font-family:var(--font-mono); font-size:0.75rem; color:#fff; overflow-x:auto;">${escapeHtml(JSON.stringify(entry.fields, null, 2))}</pre>
+            </div>
+          `;
+        }
+
+        const fieldPills = Object.entries(entry.fields || {}).map(([k, v]) => `
+          <span class="stream-field-pill">
+            <span class="stream-field-key">${escapeHtml(k)}:</span>
+            <span class="stream-field-val">${escapeHtml(v)}</span>
+          </span>
+        `).join('');
+
+        return `
+          <div class="stream-entry-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="font-family:var(--font-mono); font-size:0.82rem; color:var(--neon-cyan); font-weight:700;">
+                  ${escapeHtml(entry.id)}
+                </span>
+                ${timeStr ? `<span style="font-size:0.7rem; color:var(--text-dim); font-family:var(--font-mono); background:rgba(255,255,255,0.05); padding:1px 5px; border-radius:4px;">${timeStr}</span>` : ''}
+              </div>
+              <button class="btn" style="font-size:0.7rem; padding:2px 6px;" onclick="copyToClipboard('${escapeHtml(entry.id)}', this)">Copy ID</button>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:2px;">
+              ${fieldPills}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderStreamGroupsAndPEL() {
+      const groupsContainer = document.getElementById('streamGroupsCardsContainer');
+      const pelBody = document.getElementById('streamPELTableBody');
+      const btnAckAll = document.getElementById('btnAckAllPEL');
+
+      if (!groupsContainer || !pelBody) return;
+
+      if (!currentStreamGroupsCache || currentStreamGroupsCache.length === 0) {
+        groupsContainer.innerHTML = `
+          <div style="color:var(--text-dim); font-size:0.85rem; padding:0.5rem;">
+            No consumer groups configured for this stream. 
+            <a href="javascript:void(0)" onclick="openStreamGroupModal()" style="color:var(--neon-cyan); text-decoration:underline;">Create one now</a>.
+          </div>
+        `;
+        pelBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No pending entries in PEL. All messages acknowledged!</td></tr>';
+        if (btnAckAll) btnAckAll.style.display = 'none';
+        return;
+      }
+
+      groupsContainer.innerHTML = currentStreamGroupsCache.map(g => {
+        const consumersList = (g.consumers || []).map(c => `
+          <span class="worker-chip">
+            <span class="worker-dot"></span>
+            <span style="color:#fff; font-weight:600;">${escapeHtml(c.name)}</span>
+            <span style="color:var(--text-dim);">(${c.pending} pend, ${c.idle}ms idle)</span>
+          </span>
+        `).join('');
+
+        return `
+          <div class="consumer-group-card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div>
+                <div style="font-family:var(--font-mono); font-weight:700; color:var(--neon-purple); font-size:0.9rem;">
+                  👥 ${escapeHtml(g.name)}
+                </div>
+                <div style="font-size:0.72rem; color:var(--text-dim); font-family:var(--font-mono); margin-top:2px;">
+                  Offset: <span style="color:var(--neon-cyan);">${escapeHtml(g.last_delivered_id)}</span>
+                </div>
+              </div>
+              <div style="display:flex; gap:0.4rem;">
+                <span class="badge" style="background:rgba(176,38,255,0.15); color:var(--neon-purple); font-size:0.72rem; border:1px solid rgba(176,38,255,0.3);">
+                  ${g.consumers_count} worker${g.consumers_count === 1 ? '' : 's'}
+                </span>
+                <span class="badge" style="background:${g.pending_count > 0 ? 'rgba(255,170,0,0.15)' : 'rgba(57,255,20,0.15)'}; color:${g.pending_count > 0 ? 'var(--neon-amber)' : 'var(--neon-green)'}; font-size:0.72rem; border:1px solid ${g.pending_count > 0 ? 'rgba(255,170,0,0.4)' : 'rgba(57,255,20,0.3)'};">
+                  ${g.pending_count} pending
+                </span>
+              </div>
+            </div>
+
+            <div style="margin-top:0.4rem;">
+              <div style="font-size:0.7rem; color:var(--text-dim); margin-bottom:0.3rem; text-transform:uppercase;">Worker Roster:</div>
+              <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+                ${consumersList || '<span style="font-size:0.72rem; color:var(--text-dim); font-style:italic;">No active consumers registered</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      let allPEL = [];
+      currentStreamGroupsCache.forEach(g => {
+        (g.pel || []).forEach(p => {
+          allPEL.push({
+            group: g.name,
+            ...p
+          });
+        });
+      });
+
+      if (allPEL.length === 0) {
+        pelBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--neon-green); padding:1rem; font-family:var(--font-mono); font-size:0.8rem;">✨ Clean PEL: All messages in all consumer groups are fully acknowledged!</td></tr>';
+        if (btnAckAll) btnAckAll.style.display = 'none';
+      } else {
+        if (btnAckAll) btnAckAll.style.display = 'inline-flex';
+        pelBody.innerHTML = allPEL.map(item => `
+          <tr>
+            <td style="color:var(--neon-purple); font-weight:600;">${escapeHtml(item.group)}</td>
+            <td style="color:var(--neon-cyan);">${escapeHtml(item.id)}</td>
+            <td style="color:#fff;">${escapeHtml(item.consumer)}</td>
+            <td style="color:var(--text-dim); font-size:0.78rem;">${item.idle_ms}ms ago</td>
+            <td>
+              <span class="badge" style="background:rgba(255,170,0,0.15); color:var(--neon-amber); font-size:0.7rem; border:1px solid rgba(255,170,0,0.3);">
+                x${item.delivery_count}
+              </span>
+            </td>
+            <td>
+              <button class="btn" onclick="ackStreamMessage('${escapeHtml(item.group)}', '${escapeHtml(item.id)}')" 
+                      style="font-size:0.72rem; padding:2px 8px; border-color:var(--neon-green); color:var(--neon-green);">
+                ✓ XACK
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function openStreamProducerModal() {
+      const keyInput = document.getElementById('producerStreamKey');
+      if (keyInput) keyInput.value = currentSelectedStream || 'stream:orders';
+      const idInput = document.getElementById('producerStreamID');
+      if (idInput) idInput.value = '*';
+
+      const errEl = document.getElementById('producerErrMsg');
+      if (errEl) errEl.innerText = '';
+
+      const container = document.getElementById('producerFieldsContainer');
+      if (container) {
+        container.innerHTML = '';
+        addProducerFieldRow('order_id', 'ord_' + Math.floor(1000 + Math.random() * 9000));
+        addProducerFieldRow('amount', (Math.random() * 100 + 10).toFixed(2));
+        addProducerFieldRow('status', 'created');
+      }
+
+      document.getElementById('streamProducerModal')?.classList.add('active');
+    }
+
+    function closeStreamProducerModal() {
+      document.getElementById('streamProducerModal')?.classList.remove('active');
+    }
+
+    function addProducerFieldRow(k = '', v = '') {
+      const container = document.getElementById('producerFieldsContainer');
+      if (!container) return;
+      const row = document.createElement('div');
+      row.style.display = 'grid';
+      row.style.gridTemplateColumns = '1fr 1fr auto';
+      row.style.gap = '0.5rem';
+      row.style.alignItems = 'center';
+      row.innerHTML = `
+        <input type="text" class="field-key" placeholder="Field name" value="${escapeHtml(k)}" required
+               style="background:rgba(0,0,0,0.5); border:1px solid var(--border-subtle); color:#fff; padding:0.45rem 0.65rem; border-radius:6px; font-family:var(--font-mono); font-size:0.82rem;">
+        <input type="text" class="field-val" placeholder="Value" value="${escapeHtml(v)}" required
+               style="background:rgba(0,0,0,0.5); border:1px solid var(--border-subtle); color:#fff; padding:0.45rem 0.65rem; border-radius:6px; font-family:var(--font-mono); font-size:0.82rem;">
+        <button type="button" class="btn" onclick="this.parentElement.remove()" style="padding:4px 8px; color:var(--neon-rose); border-color:rgba(255,0,85,0.3);">✕</button>
+      `;
+      container.appendChild(row);
+    }
+
+    function applyStreamPreset(name) {
+      const container = document.getElementById('producerFieldsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const keyInput = document.getElementById('producerStreamKey');
+
+      if (name === 'orders') {
+        if (keyInput) keyInput.value = 'stream:orders';
+        addProducerFieldRow('order_id', 'ord_' + Math.floor(1000 + Math.random() * 9000));
+        addProducerFieldRow('customer', 'Customer-' + Math.floor(10 + Math.random() * 90));
+        addProducerFieldRow('total', (Math.random() * 200 + 15).toFixed(2));
+        addProducerFieldRow('status', 'paid');
+      } else if (name === 'logs') {
+        if (keyInput) keyInput.value = 'stream:logs';
+        addProducerFieldRow('level', 'INFO');
+        addProducerFieldRow('service', 'auth-service');
+        addProducerFieldRow('message', 'User authenticated via JWT');
+        addProducerFieldRow('ip', '192.168.1.' + Math.floor(1 + Math.random() * 254));
+      } else if (name === 'metrics') {
+        if (keyInput) keyInput.value = 'stream:metrics';
+        addProducerFieldRow('metric', 'cpu_percent');
+        addProducerFieldRow('host', 'worker-node-0' + Math.floor(1 + Math.random() * 8));
+        addProducerFieldRow('value', (Math.random() * 100).toFixed(1));
+        addProducerFieldRow('region', 'us-east-1');
+      } else if (name === 'payments') {
+        if (keyInput) keyInput.value = 'stream:payments';
+        addProducerFieldRow('txn_id', 'tx_' + Math.floor(100000 + Math.random() * 900000));
+        addProducerFieldRow('currency', 'USD');
+        addProducerFieldRow('amount', (Math.random() * 500 + 20).toFixed(2));
+        addProducerFieldRow('gateway', 'stripe');
+      }
+      playTone(720, 'triangle', 0.05);
+    }
+
+    async function submitStreamXAdd() {
+      const key = document.getElementById('producerStreamKey')?.value.trim();
+      const id = document.getElementById('producerStreamID')?.value.trim() || '*';
+      const errEl = document.getElementById('producerErrMsg');
+
+      if (!key) {
+        if (errEl) errEl.innerText = 'Stream key is required';
+        return;
+      }
+
+      const rows = document.querySelectorAll('#producerFieldsContainer > div');
+      const fields = {};
+      rows.forEach(r => {
+        const k = r.querySelector('.field-key')?.value.trim();
+        const v = r.querySelector('.field-val')?.value.trim();
+        if (k) fields[k] = v || '';
+      });
+
+      if (Object.keys(fields).length === 0) {
+        if (errEl) errEl.innerText = 'Please add at least one field-value pair';
+        return;
+      }
+
+      try {
+        const res = await authFetch('/api/stream/xadd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, id, fields })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          if (errEl) errEl.innerText = data.error || 'Failed to publish event';
+          return;
+        }
+
+        closeStreamProducerModal();
+        playTone(880, 'sine', 0.1);
+        currentSelectedStream = key;
+        await loadStreamsData();
+      } catch (e) {
+        if (errEl) errEl.innerText = e.message;
+      }
+    }
+
+    function openStreamGroupModal() {
+      const keyInput = document.getElementById('groupStreamKey');
+      if (keyInput) keyInput.value = currentSelectedStream || 'stream:orders';
+      const nameInput = document.getElementById('groupNameInput');
+      if (nameInput) nameInput.value = 'workers-' + Math.floor(1 + Math.random() * 9);
+      const startIDInput = document.getElementById('groupStartIDInput');
+      if (startIDInput) startIDInput.value = '$';
+      const errEl = document.getElementById('groupErrMsg');
+      if (errEl) errEl.innerText = '';
+
+      document.getElementById('streamGroupModal')?.classList.add('active');
+    }
+
+    function closeStreamGroupModal() {
+      document.getElementById('streamGroupModal')?.classList.remove('active');
+    }
+
+    async function submitStreamGroupCreate() {
+      const key = document.getElementById('groupStreamKey')?.value.trim();
+      const group = document.getElementById('groupNameInput')?.value.trim();
+      const startID = document.getElementById('groupStartIDInput')?.value.trim() || '$';
+      const mkstream = document.getElementById('groupMkStreamCheck')?.checked ?? true;
+      const errEl = document.getElementById('groupErrMsg');
+
+      if (!key || !group) {
+        if (errEl) errEl.innerText = 'Stream key and group name required';
+        return;
+      }
+
+      try {
+        const res = await authFetch('/api/stream/group/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, group, id: startID, mkstream })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          if (errEl) errEl.innerText = data.error || 'Failed to create group';
+          return;
+        }
+
+        closeStreamGroupModal();
+        playTone(660, 'triangle', 0.1);
+        currentSelectedStream = key;
+        await loadStreamsData();
+      } catch (e) {
+        if (errEl) errEl.innerText = e.message;
+      }
+    }
+
+    async function ackStreamMessage(groupName, messageId) {
+      if (!currentSelectedStream || !groupName || !messageId) return;
+      try {
+        const res = await authFetch('/api/stream/xack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: currentSelectedStream,
+            group: groupName,
+            ids: [messageId]
+          })
+        });
+        if (res.ok) {
+          playTone(900, 'sine', 0.06);
+          loadStreamDetails(currentSelectedStream, true);
+        }
+      } catch (e) {
+        console.error('Failed to XACK message:', e);
+      }
+    }
+
+    async function ackAllPendingMessages() {
+      if (!currentSelectedStream || !currentStreamGroupsCache) return;
+      try {
+        for (const g of currentStreamGroupsCache) {
+          const ids = (g.pel || []).map(p => p.id);
+          if (ids.length > 0) {
+            await authFetch('/api/stream/xack', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                key: currentSelectedStream,
+                group: g.name,
+                ids: ids
+              })
+            });
+          }
+        }
+        playTone(1020, 'sine', 0.12);
+        loadStreamDetails(currentSelectedStream, false);
+      } catch (e) {
+        console.error('Failed to XACK all:', e);
+      }
+    }
+
+    async function seedDemoStream() {
+      try {
+        await authFetch('/api/stream/xadd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'stream:orders',
+            id: '*',
+            fields: { order_id: 'ord_9001', customer: 'Alice', amount: '89.90', status: 'paid' }
+          })
+        });
+        await authFetch('/api/stream/xadd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'stream:orders',
+            id: '*',
+            fields: { order_id: 'ord_9002', customer: 'Bob', amount: '124.50', status: 'processing' }
+          })
+        });
+        await authFetch('/api/stream/xadd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'stream:orders',
+            id: '*',
+            fields: { order_id: 'ord_9003', customer: 'Charlie', amount: '34.00', status: 'pending' }
+          })
+        });
+
+        await authFetch('/api/stream/group/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'stream:orders',
+            group: 'fulfillment-workers',
+            id: '0',
+            mkstream: true
+          })
+        });
+
+        await authFetch('/api/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            command: 'XREADGROUP GROUP fulfillment-workers worker-alpha COUNT 1 STREAMS stream:orders >'
+          })
+        });
+
+        currentSelectedStream = 'stream:orders';
+        playTone(780, 'sine', 0.1);
+        await loadStreamsData();
+      } catch (e) {
+        console.error('Failed to seed demo stream:', e);
+      }
+    }
+
+    function copyStreamXRange() {
+      if (!currentSelectedStream) return;
+      const cmd = `XRANGE ${currentSelectedStream} - + COUNT 50`;
+      copyToClipboard(cmd);
+    }
+
+    function copyToClipboard(text, btn) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          if (btn) {
+            const orig = btn.innerText;
+            btn.innerText = 'Copied!';
+            setTimeout(() => { btn.innerText = orig; }, 1200);
+          }
+          playTone(850, 'sine', 0.05);
+        }).catch(() => {});
+      }
+    }
+
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       if (typeof str !== 'string') return String(str);
@@ -2634,6 +3597,7 @@
     connectWebSocket();
     refreshGalaxy();
     renderGalaxy();
+    toggleStreamsAutoPoll();
   </script>
 </body>
 </html>

@@ -425,6 +425,45 @@ func (ks *Keyspace) ListKeyMetas(pattern string, limit int) []KeyMeta {
 	return metas
 }
 
+type StreamMeta struct {
+	Key            string `json:"key"`
+	Length         int64  `json:"length"`
+	FirstEntryID   string `json:"first_entry_id"`
+	LastEntryID    string `json:"last_entry_id"`
+	ConsumerGroups int    `json:"consumer_groups"`
+	UpdatedAt      int64  `json:"updated_at"`
+}
+
+func (ks *Keyspace) ListStreams() []StreamMeta {
+	now := time.Now().UnixMilli()
+	var streams []StreamMeta
+
+	for i := 0; i < NumShards; i++ {
+		shard := ks.shards[i]
+		shard.mu.RLock()
+		for k, entry := range shard.entries {
+			if entry.IsExpired(now) || entry.Type != TypeStream {
+				continue
+			}
+			st, ok := entry.Value.(*datastruct.Stream)
+			if !ok {
+				continue
+			}
+			streams = append(streams, StreamMeta{
+				Key:            k,
+				Length:         st.Len(),
+				FirstEntryID:   st.FirstID(),
+				LastEntryID:    st.LastID(),
+				ConsumerGroups: len(st.GetGroupsInfo()),
+				UpdatedAt:      entry.UpdatedAt,
+			})
+		}
+		shard.mu.RUnlock()
+	}
+
+	return streams
+}
+
 func (ks *Keyspace) FlushDB() {
 	for i := 0; i < NumShards; i++ {
 		shard := ks.shards[i]

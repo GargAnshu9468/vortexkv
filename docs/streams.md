@@ -232,3 +232,42 @@ run();
 | **Protocol** | Standard Redis RESP | Custom Kafka TCP | AMQP / STOMP |
 | **Memory Footprint** | **~25 MB base** | ~1 - 2 GB JVM heap | ~300 MB |
 | **Consumer Load Balancing** | Native (`XREADGROUP`) | Partition assignment | Queue bindings |
+
+---
+
+## 🌌 Visual Streams Studio & Consumer Group Monitor (Web Studio)
+
+VortexKV Web Studio (`http://localhost:7380`) includes a built-in, real-time Streams Studio deck under the **`🌊 Streams & PEL`** navigation tab.
+
+### Features
+1. **Active Streams Directory**:
+   - Lists all streams with length counter, consumer groups counter, first entry ID, and latest entry ID.
+   - Filter input for search across stream keys.
+   - Quick "Seed Demo Stream" button for one-click sample orders and worker PEL generation.
+2. **Live Event Timeline & Feed**:
+   - Displays real-time message stream with toggle between structured key-value tag pills and raw formatted JSON.
+   - Configurable limit selector (20, 50, 100 entries).
+   - One-click "Copy ID" and "Copy XRANGE" clipboard actions.
+3. **Consumer Groups & Worker Health Roster**:
+   - Card deck showing consumer groups, current delivery offsets (`last_delivered_id`), active worker rosters, and idle durations.
+4. **Worker PEL (Pending Entries List) Inspector**:
+   - Real-time audit table of all unacknowledged messages delivered to workers.
+   - Shows message ID, assigned consumer, delivery age / idle milliseconds, and delivery retry count.
+   - Interactive **`✓ XACK`** button next to each pending item to instantly acknowledge messages.
+   - Batch **`✓ XACK All Pending`** action for rapid queue clearing.
+5. **Interactive Stream Event Producer (XADD Modal)**:
+   - Dynamic key-value pairs editor.
+   - Ready-to-use event presets: **🛒 Orders**, **📋 System Logs**, **📈 Metrics**, and **💳 Payments**.
+
+### Streams REST API Reference
+
+All endpoints are secured by session authentication or bearer token (`?token=<requirepass>` or `Authorization: Bearer <token>`):
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/streams` | `GET` | Returns list of all streams with length, consumer groups, first/last ID. |
+| `/api/stream/messages` | `GET` | Returns stream messages (`?key=<name>&start=-&end=+&count=50`). |
+| `/api/stream/groups` | `GET` | Returns consumer groups, worker rosters, and detailed PEL entries (`?key=<name>`). |
+| `/api/stream/xadd` | `POST` | Publishes event to stream: `{"key": "...", "id": "*", "fields": {...}}`. |
+| `/api/stream/group/create` | `POST` | Creates consumer group: `{"key": "...", "group": "...", "id": "$", "mkstream": true}`. |
+| `/api/stream/xack` | `POST` | Acknowledges message(s): `{"key": "...", "group": "...", "ids": ["..."]}`. |

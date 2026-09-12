@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/vortexkv/vortexkv/internal/cluster"
 	"github.com/vortexkv/vortexkv/internal/datastruct"
 	"github.com/vortexkv/vortexkv/internal/engine"
+	"github.com/vortexkv/vortexkv/internal/resp"
 )
 
 //go:embed dist/*
@@ -52,6 +54,12 @@ func NewServer(addr string, eng *engine.Engine) *Server {
 	mux.HandleFunc("/metrics", s.handlePrometheusMetrics)
 	mux.HandleFunc("/api/keys", s.authMiddleware(s.handleKeys))
 	mux.HandleFunc("/api/key", s.authMiddleware(s.handleKeyDetail))
+	mux.HandleFunc("/api/streams", s.authMiddleware(s.handleStreamsList))
+	mux.HandleFunc("/api/stream/messages", s.authMiddleware(s.handleStreamMessages))
+	mux.HandleFunc("/api/stream/groups", s.authMiddleware(s.handleStreamGroups))
+	mux.HandleFunc("/api/stream/xadd", s.authMiddleware(s.handleStreamXAdd))
+	mux.HandleFunc("/api/stream/group/create", s.authMiddleware(s.handleStreamGroupCreate))
+	mux.HandleFunc("/api/stream/xack", s.authMiddleware(s.handleStreamXAck))
 	mux.HandleFunc("/api/exec", s.authMiddleware(s.handleExec))
 	mux.HandleFunc("/api/slowlog", s.authMiddleware(s.handleSlowLog))
 	mux.HandleFunc("/ws", s.handleWebSocket)
@@ -632,6 +640,290 @@ func (s *Server) handleKeyDetail(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleStreamsList(w http.ResponseWriter, r *http.Request) {
+	streams := s.engine.Keyspace.ListStreams()
+	if streams == nil {
+		streams = []engine.StreamMeta{}
+	}
+	sort.Slice(streams, func(i, j int) bool {
+		return streams[i].Key < streams[j].Key
+	})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"streams": streams,
+		"total":   len(streams),
+	})
+}
+
+func (s *Server) handleStreamMessages(w http.ResponseWriter, r *http.Request) {
+	key := r.URL.Query().Get("key")
+	if key == "" {
+		http.Error(w, "missing key parameter", http.StatusBadRequest)
+		return
+	}
+
+	entry, exists := s.engine.Keyspace.Get(key)
+	if !exists || entry.Type != engine.TypeStream {
+		http.Error(w, "stream not found", http.StatusNotFound)
+		return
+	}
+
+	st, ok := entry.Value.(*datastruct.Stream)
+	if !ok {
+		http.Error(w, "invalid stream object", http.StatusInternalServerError)
+		return
+	}
+
+	start := r.URL.Query().Get("start")
+	if start == "" {
+		start = "-"
+	}
+	end := r.URL.Query().Get("end")
+	if end == "" {
+		end = "+"
+	}
+	count := int64(50)
+	if cStr := r.URL.Query().Get("count"); cStr != "" {
+		if c, err := strconv.ParseInt(cStr, 10, 64); err == nil && c > 0 {
+			count = c
+		}
+	}
+
+	messages := st.Range(start, end, count)
+	if messages == nil {
+		messages = []datastruct.StreamEntry{}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"key":      key,
+		"length":   st.Len(),
+		"first_id": st.FirstID(),
+		"last_id":  st.LastID(),
+		"messages": messages,
+	})
+}
+
+type GroupDetail struct {
+	Name            string           `json:"name"`
+	ConsumersCount  int              `json:"consumers_count"`
+	PendingCount    int              `json:"pending_count"`
+	LastDeliveredID string           `json:"last_delivered_id"`
+	Consumers       []map[string]any `json:"consumers"`
+	PEL             []PELDetail      `json:"pel"`
+}
+
+type PELDetail struct {
+	ID            string `json:"id"`
+	Consumer      string `json:"consumer"`
+	DeliveryTime  string `json:"delivery_time"`
+	DeliveryCount int64  `json:"delivery_count"`
+	IdleMs        int64  `json:"idle_ms"`
+}
+
+func (s *Server) handleStreamGroups(w http.ResponseWriter, r *http.Request) {
+	key := r.URL.Query().Get("key")
+	if key == "" {
+		http.Error(w, "missing key parameter", http.StatusBadRequest)
+		return
+	}
+
+	entry, exists := s.engine.Keyspace.Get(key)
+	if !exists || entry.Type != engine.TypeStream {
+		http.Error(w, "stream not found", http.StatusNotFound)
+		return
+	}
+
+	st, ok := entry.Value.(*datastruct.Stream)
+	if !ok {
+		http.Error(w, "invalid stream object", http.StatusInternalServerError)
+		return
+	}
+
+	groupsInfo := st.GetGroupsInfo()
+	groups := make([]GroupDetail, 0, len(groupsInfo))
+	now := time.Now()
+
+	for _, g := range groupsInfo {
+		gName, _ := g["name"].(string)
+		consumers, _ := st.GetConsumersInfo(gName)
+		if consumers == nil {
+			consumers = []map[string]any{}
+		}
+
+		pelEntries, _ := st.GetPendingDetailed(gName, "-", "+", 200, "", 0)
+		pel := make([]PELDetail, 0, len(pelEntries))
+		for _, pe := range pelEntries {
+			idle := now.Sub(pe.DeliveryTime).Milliseconds()
+			if idle < 0 {
+				idle = 0
+			}
+			pel = append(pel, PELDetail{
+				ID:            pe.ID,
+				Consumer:      pe.ConsumerName,
+				DeliveryTime:  pe.DeliveryTime.Format(time.RFC3339),
+				DeliveryCount: pe.DeliveryCount,
+				IdleMs:        idle,
+			})
+		}
+
+		cCount, _ := g["consumers"].(int)
+		pCount, _ := g["pending"].(int)
+		lastDeliv, _ := g["last-delivered-id"].(string)
+
+		groups = append(groups, GroupDetail{
+			Name:            gName,
+			ConsumersCount:  cCount,
+			PendingCount:    pCount,
+			LastDeliveredID: lastDeliv,
+			Consumers:       consumers,
+			PEL:             pel,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"key":    key,
+		"groups": groups,
+	})
+}
+
+type StreamXAddRequest struct {
+	Key    string            `json:"key"`
+	ID     string            `json:"id"`
+	Fields map[string]string `json:"fields"`
+}
+
+func (s *Server) handleStreamXAdd(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req StreamXAddRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request JSON", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(req.Key) == "" {
+		http.Error(w, "Stream key required", http.StatusBadRequest)
+		return
+	}
+
+	id := strings.TrimSpace(req.ID)
+	if id == "" {
+		id = "*"
+	}
+
+	if len(req.Fields) == 0 {
+		http.Error(w, "At least one field-value pair is required", http.StatusBadRequest)
+		return
+	}
+
+	args := []string{"XADD", req.Key, id}
+	for k, v := range req.Fields {
+		args = append(args, k, v)
+	}
+
+	res := s.engine.ExecuteCommand("", args)
+	if res.Type == resp.ErrorPrefix {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": res.String(),
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"id":      res.String(),
+		"key":     req.Key,
+	})
+}
+
+type StreamGroupCreateRequest struct {
+	Key      string `json:"key"`
+	Group    string `json:"group"`
+	ID       string `json:"id"`
+	MkStream bool   `json:"mkstream"`
+}
+
+func (s *Server) handleStreamGroupCreate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req StreamGroupCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request JSON", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(req.Key) == "" || strings.TrimSpace(req.Group) == "" {
+		http.Error(w, "Stream key and group name required", http.StatusBadRequest)
+		return
+	}
+
+	startID := strings.TrimSpace(req.ID)
+	if startID == "" {
+		startID = "$"
+	}
+
+	args := []string{"XGROUP", "CREATE", req.Key, req.Group, startID}
+	if req.MkStream {
+		args = append(args, "MKSTREAM")
+	}
+
+	res := s.engine.ExecuteCommand("", args)
+	if res.Type == resp.ErrorPrefix {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": res.String(),
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": res.String(),
+	})
+}
+
+type StreamXAckRequest struct {
+	Key   string   `json:"key"`
+	Group string   `json:"group"`
+	IDs   []string `json:"ids"`
+}
+
+func (s *Server) handleStreamXAck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req StreamXAckRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request JSON", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(req.Key) == "" || strings.TrimSpace(req.Group) == "" || len(req.IDs) == 0 {
+		http.Error(w, "Stream key, group, and at least one message ID required", http.StatusBadRequest)
+		return
+	}
+
+	args := append([]string{"XACK", req.Key, req.Group}, req.IDs...)
+	res := s.engine.ExecuteCommand("", args)
+	if res.Type == resp.ErrorPrefix {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": res.String(),
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":      true,
+		"acknowledged": res.Num,
+	})
+}
+
 type ExecRequest struct {
 	Command string `json:"command"`
 }
@@ -670,7 +962,7 @@ func (s *Server) handleExec(w http.ResponseWriter, r *http.Request) {
 	}
 
 	start := time.Now()
-	res := s.engine.ExecuteCommand("web-cli", args)
+	res := s.engine.ExecuteCommand("", args)
 	duration := time.Since(start).Microseconds()
 
 	respObj := ExecResponse{

@@ -193,6 +193,15 @@ func (s *Stream) LastID() string {
 	return s.lastID.String()
 }
 
+func (s *Stream) FirstID() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if len(s.entries) == 0 {
+		return "0-0"
+	}
+	return s.entries[0].ID
+}
+
 // Range returns entries between start and end (inclusive)
 func (s *Stream) Range(start, end string, count int64) []StreamEntry {
 	s.mu.RLock()
