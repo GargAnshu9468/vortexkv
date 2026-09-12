@@ -1,0 +1,17 @@
+apiVersion: v2
+name: vortexkv
+description: Hyper-Performance In-Memory Data Store & Real-time Command Studio
+type: application
+version: 1.0.0
+appVersion: "1.0.0-PROD"
+keywords:
+  - redis
+  - cache
+  - in-memory
+  - key-value
+  - vector-search
+  - database
+home: https://github.com/vortexkv/vortexkv
+maintainers:
+  - name: VortexKV Team
+    email: dev@vortexkv.io

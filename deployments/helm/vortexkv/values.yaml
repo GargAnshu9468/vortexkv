@@ -1,0 +1,41 @@
+replicaCount: 1
+
+image:
+  repository: vortexkv/vortex
+  pullPolicy: IfNotPresent
+  tag: "1.0.0-PROD"
+
+ports:
+  wire: 7379
+  web: 7380
+
+config:
+  requirepass: "vortex_secure_2026"
+  maxmemory: "2gb"
+  maxclients: 10000
+  aofFsync: "everysec"
+
+service:
+  type: ClusterIP
+  wirePort: 7379
+  webPort: 7380
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /data
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: "500m"
+    memory: 1Gi
+
+serviceMonitor:
+  enabled: true
+  interval: 10s
+  scrapeTimeout: 5s

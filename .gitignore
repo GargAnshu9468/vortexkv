@@ -1,0 +1,47 @@
+# Compiled binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artifacts and coverage
+*.test
+*.out
+coverage.txt
+
+# Database files & dumps
+*.aof
+*.rdb
+dump.rdb
+vortex.aof
+
+# Security Credentials, Keys & Certificates
+*.pem
+*.key
+*.crt
+*.cert
+*.pfx
+*.p12
+.env
+.env.*
+!.env.example
+
+# Logs and runtime data
+*.log
+/data/
+
+# OS and Editor metadata
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

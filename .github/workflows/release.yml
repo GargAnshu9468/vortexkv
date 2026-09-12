@@ -1,0 +1,77 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release Assets
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            archive: tar.gz
+          - os: linux
+            arch: arm64
+            archive: tar.gz
+          - os: darwin
+            arch: amd64
+            archive: tar.gz
+          - os: darwin
+            arch: arm64
+            archive: tar.gz
+          - os: windows
+            arch: amd64
+            archive: zip
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Compile Multi-Platform Binaries
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p build_dist
+          BINARY_EXT=""
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            BINARY_EXT=".exe"
+          fi
+          go build -ldflags="-s -w" -o build_dist/vortex-server${BINARY_EXT} ./cmd/vortex-server
+          go build -ldflags="-s -w" -o build_dist/vortex-cli${BINARY_EXT} ./cmd/vortex-cli
+          cp README.md build_dist/
+          cp vortex.conf build_dist/
+
+      - name: Archive Artifacts
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          PKG_NAME="vortexkv-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}"
+          mv build_dist "$PKG_NAME"
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            zip -r "${PKG_NAME}.zip" "$PKG_NAME"
+          else
+            tar -czvf "${PKG_NAME}.tar.gz" "$PKG_NAME"
+          fi
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            vortexkv-*.tar.gz
+            vortexkv-*.zip

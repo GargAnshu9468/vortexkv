@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VORTEX // KV — Next-Gen In-Memory Command Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,800;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #06080e;
+      --bg-card: rgba(14, 20, 36, 0.72);
+      --bg-card-hover: rgba(22, 31, 56, 0.85);
+      --border-subtle: rgba(0, 243, 255, 0.15);
+      --border-glow: rgba(0, 243, 255, 0.5);
+      --neon-cyan: #00f3ff;
+      --neon-purple: #b026ff;
+      --neon-green: #39ff14;
+      --neon-amber: #ffaa00;
+      --neon-rose: #ff0055;
+      --text-main: #f0f4fc;
+      --text-dim: #8b9bb4;
+      --font-ui: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(176, 38, 255, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(0, 243, 255, 0.1) 0%, transparent 45%),
+        linear-gradient(to bottom, rgba(6, 8, 14, 0.85), var(--bg-deep));
+      background-attachment: fixed;
+    }
+
+    /* Ambient background grid */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Layout */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(6, 8, 14, 0.75);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+      animation: pulseLogo 3s infinite alternate;
+    }
+
+    @keyframes pulseLogo {
+      0% { box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
+      100% { box-shadow: 0 0 28px rgba(176, 38, 255, 0.6); }
+    }
+
+    .brand-logo svg {
+      width: 22px;
+      height: 22px;
+      fill: #fff;
+    }
+
+    .brand-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #ffffff, var(--neon-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge-beta {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(176, 38, 255, 0.2);
+      border: 1px solid var(--neon-purple);
+      color: var(--neon-purple);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      -webkit-text-fill-color: var(--neon-purple);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .live-status {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      background: rgba(0, 243, 255, 0.08);
+      border: 1px solid var(--border-subtle);
+      padding: 0.35rem 0.8rem;
+      border-radius: 20px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--neon-green);
+      box-shadow: 0 0 8px var(--neon-green);
+      animation: blinkDot 1.8s infinite ease-in-out;
+    }
+
+    @keyframes blinkDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      padding: 0.45rem 0.95rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 12px rgba(0, 243, 255, 0.25);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(0, 243, 255, 0.2), rgba(176, 38, 255, 0.25));
+      border-color: var(--neon-cyan);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(0, 243, 255, 0.35), rgba(176, 38, 255, 0.4));
+      box-shadow: 0 0 18px rgba(0, 243, 255, 0.4);
+    }
+
+    /* Main Container */
+    .container {
+      position: relative;
+      z-index: 10;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 1.75rem 3rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Metrics HUD Grid */
+    .hud-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .hud-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.25rem 1.4rem;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s ease;
+    }
+
+    .hud-card:hover {
+      border-color: var(--border-glow);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(0, 243, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .hud-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+      opacity: 0.5;
+    }
+
+    .hud-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .hud-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+
+    .hud-icon {
+      font-size: 1.1rem;
+      opacity: 0.8;
+    }
+
+    .hud-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .hud-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      letter-spacing: -1px;
+    }
+
+    .hud-sub {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .sparkline-canvas {
+      width: 100%;
+      height: 38px;
+      margin-top: 0.6rem;
+    }
+
+    /* Studio Tabs & Content Area */
+    .studio-tabs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.5rem;
+      gap: 1rem;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      max-width: 100%;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+
+    .nav-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-dim);
+      padding: 0.5rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap !important;
+      word-break: keep-all !important;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .nav-tab:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .nav-tab.active {
+      color: var(--neon-cyan);
+      background: rgba(0, 243, 255, 0.08);
+      border-color: rgba(0, 243, 255, 0.3);
+      box-shadow: 0 0 14px rgba(0, 243, 255, 0.15);
+    }
+
+    /* Main Split Workspaces */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 0.9rem 1.25rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Terminal Workspace */
+    .terminal-window {
+      height: 480px;
+      display: flex;
+      flex-direction: column;
+      background: rgba(3, 5, 10, 0.9);
+      font-family: var(--font-mono);
+    }
+
+    .terminal-body {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+
+    .terminal-entry {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .cmd-line {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .cmd-prompt {
+      color: var(--neon-cyan);
+      user-select: none;
+      font-weight: 700;
+    }
+
+    .cmd-text {
+      color: #fff;
+    }
+
+    .cmd-duration {
+      font-size: 0.72rem;
+      color: var(--neon-green);
+      margin-left: auto;
+      background: rgba(57, 255, 20, 0.1);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .cmd-res {
+      padding-left: 1.2rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .res-ok { color: var(--neon-green); }
+    .res-err { color: var(--neon-rose); }
+    .res-val { color: var(--neon-cyan); }
+    .res-int { color: #f9cb28; }
+
+    .terminal-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 1rem;
+      background: rgba(10, 14, 25, 0.95);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .terminal-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+    }
+
+    /* Galaxy Canvas Visualizer */
+    .galaxy-container {
+      position: relative;
+      height: 480px;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0a1124 0%, #03060d 100%);
+    }
+
+    #galaxyCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .galaxy-overlay-controls {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .galaxy-legend {
+      background: rgba(6, 8, 14, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.4rem 0.8rem;
+      display: flex;
+      gap: 0.8rem;
+      pointer-events: auto;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* Keys Table & Inspector */
+    .keys-table-container {
+      max-height: 440px;
+      overflow-y: auto;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      width: 100%;
+    }
+
+    .v-table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .v-table th {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-dim);
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-subtle);
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.5px;
+    }
+
+    .v-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-family: var(--font-mono);
+    }
+
+    .v-table tr:hover td {
+      background: rgba(0, 243, 255, 0.04);
+    }
+
+    .type-pill {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .type-string { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
+    .type-hash { background: rgba(176, 38, 255, 0.15); color: var(--neon-purple); border: 1px solid rgba(176, 38, 255, 0.4); }
+    .type-list { background: rgba(57, 255, 20, 0.15); color: var(--neon-green); border: 1px solid rgba(57, 255, 20, 0.4); }
+    .type-set { background: rgba(255, 170, 0, 0.15); color: var(--neon-amber); border: 1px solid rgba(255, 170, 0, 0.4); }
+    .type-zset { background: rgba(255, 0, 85, 0.15); color: var(--neon-rose); border: 1px solid rgba(255, 0, 85, 0.4); }
+    .type-vector { background: rgba(0, 162, 255, 0.2); color: #00d4ff; border: 1px solid #00d4ff; }
+    .type-stream { background: rgba(255, 255, 255, 0.15); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
+
+    /* Modal / Drawer */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #0d121f;
+      border: 1px solid var(--neon-cyan);
+      box-shadow: 0 0 40px rgba(0, 243, 255, 0.3);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 650px;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    /* Keyframe shimmer */
+    @keyframes cyberShimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* Quick command chips */
+    .chips-row {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .chip {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--text-dim);
+      transition: all 0.15s ease;
+    }
+
+    .chip:hover {
+      background: rgba(0, 243, 255, 0.12);
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+    }
+
+    /* =================================================== */
+    /* RESPONSIVE DESIGN & ADAPTIVE VIEWPORTS              */
+    /* =================================================== */
+
+    /* Large Desktops / Laptops (<= 1200px) */
+    @media (max-width: 1200px) {
+      .hud-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .workspace-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+      }
+    }
+
+    /* Tablets / Split Windows (<= 992px) */
+    @media (max-width: 992px) {
+      .header {
+        padding: 0.9rem 1.25rem;
+      }
+      .container {
+        padding: 1.25rem 1rem 2.5rem 1rem;
+        gap: 1.2rem;
+      }
+      .studio-tabs-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+      }
+      .tabs-port-badge {
+        align-self: flex-start;
+      }
+      .nav-tabs {
+        width: 100%;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 6px;
+      }
+      .nav-tabs::-webkit-scrollbar {
+        display: none;
+      }
+      .nav-tab {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        display: inline-flex !important;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.9rem;
+        font-size: 0.85rem;
+      }
+      .galaxy-container {
+        height: 420px;
+      }
+      .terminal-window {
+        height: 420px;
+      }
+    }
+
+    /* Mobile Devices & Small Tablets (<= 768px) */
+    @media (max-width: 768px) {
+      .header {
+        position: static !important;
+        padding: 0.85rem 1rem;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.85rem;
+      }
+      .brand-group {
+        justify-content: space-between;
+        width: 100%;
+      }
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 0.45rem;
+        width: 100%;
+      }
+      .btn {
+        padding: 0.38rem 0.7rem;
+        font-size: 0.78rem;
+      }
+      .live-status {
+        padding: 0.3rem 0.65rem;
+        font-size: 0.75rem;
+      }
+      .container {
+        padding: 1rem 0.65rem 2rem 0.65rem;
+        gap: 1rem;
+      }
+      .hud-grid {
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+      }
+      .hud-card {
+        padding: 1rem 1.15rem;
+      }
+      .nav-tabs {
+        width: 100%;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 6px;
+      }
+      .nav-tabs::-webkit-scrollbar {
+        display: none;
+      }
+      .nav-tab {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        display: inline-flex !important;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.45rem 0.8rem;
+        font-size: 0.82rem;
+      }
+      .panel-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+      }
+      .panel-header > * {
+        width: 100% !important;
+      }
+      .panel-header > div:last-child {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .panel-header > div:last-child .btn {
+        flex: 1 1 auto;
+        justify-content: center;
+        text-align: center;
+      }
+      .galaxy-container {
+        height: 320px;
+      }
+      .galaxy-legend {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.35rem 0.6rem;
+        font-size: 0.68rem;
+        max-width: calc(100% - 24px);
+      }
+      .terminal-window {
+        height: 380px;
+      }
+      .terminal-prompt-bar {
+        padding: 0.4rem 0.65rem;
+      }
+      .chips-row {
+        gap: 0.35rem;
+      }
+      .chip {
+        font-size: 0.68rem;
+        padding: 2px 6px;
+      }
+      .modal-box {
+        width: 95%;
+        max-width: 95%;
+        padding: 1.15rem;
+        border-radius: 12px;
+      }
+      .modal-box form > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+      }
+      .vector-input-row {
+        flex-direction: column;
+        align-items: stretch !important;
+      }
+      .vector-input-row input {
+        width: 100% !important;
+      }
+      .vector-input-row button {
+        width: 100% !important;
+        justify-content: center;
+      }
+    }
+
+    /* Small Mobile Screens (<= 480px) */
+    @media (max-width: 480px) {
+      .brand-title {
+        font-size: 1.2rem;
+      }
+      .brand-logo {
+        width: 32px;
+        height: 32px;
+      }
+      .badge-beta {
+        font-size: 0.6rem;
+        padding: 1px 5px;
+      }
+      .btn {
+        padding: 0.35rem 0.65rem;
+        font-size: 0.75rem;
+      }
+      .hud-val {
+        font-size: 1.75rem;
+      }
+      .nav-tab {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.78rem;
+      }
+      .tabs-port-badge {
+        font-size: 0.72rem;
+      }
+      .modal-box {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="brand-group">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">
+          VORTEX<span style="color:var(--neon-cyan)">KV</span>
+          <span class="badge-beta">v1.0-Beta</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="live-status" id="wsStatusBadge">
+        <span class="status-dot"></span>
+        <span id="wsStatusText">SYNCING 60FPS</span>
+      </div>
+
+      <button class="btn" id="btnAudioToggle" title="Toggle Cyber Audio FX">
+        🔊 <span id="audioLabel">Audio FX</span>
+      </button>
+
+      <button class="btn" id="btnSeedData">
+        ⚡ Seed Sample Data
+      </button>
+
+      <button class="btn btn-primary" id="btnFlush">
+        🧹 FlushDB
+      </button>
+
+      <button class="btn" id="btnLockDeck" onclick="lockStudioDeck()" title="Lock session & require password" style="border-color: rgba(255, 170, 0, 0.4); color: var(--neon-amber);">
+        🔒 Lock Deck
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+    <!-- Top HUD Cards (Real-Time Metrics) -->
+    <div class="hud-grid">
+      <div class="hud-card">
+        <div class="hud-header">
+          <span class="hud-label">Instantaneous OPS</span>
+          <span class="hud-icon" style="color:var(--neon-green)">⚡</span>
+        </div>
+        <div class="hud-value-row">
+          <span class="hud-value" id="valOps" style="color:var(--neon-green)">0</span>
+          <span class="hud-sub">ops/sec</span>
+        </div>
+        <canvas class="sparkline-canvas" id="canvasOps"></canvas>
+      </div>
+
+      <div class="hud-card">
+        <div class="hud-header">
+          <span class="hud-label">P99 Command Latency</span>
+          <span class="hud-icon" style="color:var(--neon-cyan)">⏱️</span>
+        </div>
+        <div class="hud-value-row">
+          <span class="hud-value" id="valP99" style="color:var(--neon-cyan)">0.0</span>
+          <span class="hud-sub">µs (microsec)</span>
+        </div>
+        <canvas class="sparkline-canvas" id="canvasLatency"></canvas>
+      </div>
+
+      <div class="hud-card">
+        <div class="hud-header">
+          <span class="hud-label">Allocated Memory</span>
+          <span class="hud-icon" style="color:var(--neon-purple)">💾</span>
+        </div>
+        <div class="hud-value-row">
+          <span class="hud-value" id="valMem" style="color:var(--neon-purple)">0.0</span>
+          <span class="hud-sub">MB</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.7rem;">
+          Active Go Runtime GC & Arena
+        </div>
+      </div>
+
+      <div class="hud-card">
+        <div class="hud-header">
+          <span class="hud-label">Keyspace Topology</span>
+          <span class="hud-icon" style="color:var(--neon-amber)">🪐</span>
+        </div>
+        <div class="hud-value-row">
+          <span class="hud-value" id="valKeys" style="color:var(--neon-amber)">0</span>
+          <span class="hud-sub">keys online</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.7rem;" id="valClients">
+          1 Active Wire Connection
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Selector -->
+    <div class="studio-tabs-row">
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="studio">🌌 Interactive Studio & Galaxy</button>
+        <button class="nav-tab" data-tab="keyspace">🗂️ Keyspace Table</button>
+        <button class="nav-tab" data-tab="vectors">🧠 AI Vector Sandbox</button>
+        <button class="nav-tab" data-tab="slowlog">🔥 SlowLog & Telemetry</button>
+        <button class="nav-tab" data-tab="acl">👥 Access & Users (ACL)</button>
+      </div>
+      <div class="tabs-port-badge" style="font-size: 0.8rem; color: var(--text-dim); font-family: var(--font-mono); white-space: nowrap;">
+        TCP Port: <b style="color:var(--neon-cyan)">7379</b> | Web Port: <b style="color:var(--neon-purple)">7380</b>
+      </div>
+    </div>
+
+    <!-- Workspace Area -->
+    <div id="tabContentStudio">
+      <div class="workspace-grid">
+        <!-- Galaxy Visualizer -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">
+              <span style="color:var(--neon-purple)">✦</span> 2D Keyspace Galaxy Visualizer
+            </span>
+            <span style="font-size: 0.75rem; color: var(--text-dim);">Real-time Force Nodes</span>
+          </div>
+          <div class="galaxy-container">
+            <canvas id="galaxyCanvas"></canvas>
+            <div class="galaxy-overlay-controls">
+              <div class="galaxy-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--neon-cyan)"></div>String</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--neon-purple)"></div>Hash</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--neon-green)"></div>List</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--neon-amber)"></div>Set</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--neon-rose)"></div>ZSet</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#00d4ff"></div>Vector</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cyberpunk Terminal Window -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">
+              <span style="color:var(--neon-cyan)">⚡</span> Cyberpunk Command Terminal
+            </span>
+            <span style="font-size: 0.75rem; color: var(--text-dim);">Tab Autocomplete & Microsec Benchmarks</span>
+          </div>
+          <div class="terminal-window">
+            <div class="terminal-body" id="termOutput">
+              <div class="terminal-entry">
+                <div style="color: var(--neon-cyan); font-weight:700;">// VORTEX COMMAND KERNEL READY</div>
+                <div style="color: var(--text-dim); font-size: 0.8rem;">Type any Redis command below (e.g. SET, GET, HSET, ZADD, VSEARCH).</div>
+              </div>
+            </div>
+            
+            <div style="padding: 0.4rem 1rem; background: rgba(0,0,0,0.4);">
+              <div class="chips-row">
+                <span class="chip" onclick="executeQuick('PING')">PING</span>
+                <span class="chip" onclick="executeQuick('INFO')">INFO</span>
+                <span class="chip" onclick="executeQuick('DBSIZE')">DBSIZE</span>
+                <span class="chip" onclick="executeQuick('KEYS *')">KEYS *</span>
+                <span class="chip" onclick="executeQuick('SET alpha \"quantum speed\" EX 60')">SET alpha</span>
+                <span class="chip" onclick="executeQuick('HSET hero:1 name \"Nova\" power 99')">HSET hero</span>
+                <span class="chip" onclick="executeQuick('ZADD ranking 990 \"CyberGhost\" 850 \"Viper\"')">ZADD ranking</span>
+              </div>
+            </div>
+
+            <form class="terminal-input-bar" id="termForm" onsubmit="event.preventDefault(); submitCommand();">
+              <span class="cmd-prompt">vortex:7379&gt;</span>
+              <input type="text" id="termInput" class="terminal-input" placeholder="Type command here (e.g. SET user:100 'Cyber')..." autocomplete="off">
+              <button type="submit" class="btn btn-primary" style="padding: 0.35rem 0.8rem; font-size: 0.8rem;">Run</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Keyspace Table -->
+    <div id="tabContentKeyspace" style="display:none;">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">🗂️ Active Keys In Engine</span>
+          <div style="display:flex; gap:0.5rem;">
+            <input type="text" id="keySearchInput" placeholder="Filter pattern (e.g. user:*)..." 
+                   style="background:rgba(0,0,0,0.4); border:1px solid var(--border-subtle); color:#fff; padding:0.35rem 0.75rem; border-radius:6px; font-family:var(--font-mono); font-size:0.8rem;"
+                   oninput="refreshKeysTable()">
+            <button class="btn" onclick="refreshKeysTable()">Refresh</button>
+          </div>
+        </div>
+        <div class="keys-table-container">
+          <table class="v-table">
+            <thead>
+              <tr>
+                <th>Key Name</th>
+                <th>Type</th>
+                <th>TTL (Sec)</th>
+                <th>Est. Size</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="keysTableBody">
+              <tr><td colspan="5" style="text-align:center; color:var(--text-dim);">Loading keyspace...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: AI Vector Sandbox -->
+    <div id="tabContentVectors" style="display:none;">
+      <div class="panel" style="padding: 1.5rem;">
+        <h3 style="margin-bottom: 0.5rem; color: var(--neon-cyan);">🧠 AI Vector Search Playground (Next-Gen Feature)</h3>
+        <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1.5rem;">
+          VortexKV embeds high-speed vector embeddings directly beside traditional KV data. Perform cosine or euclidean similarity lookups directly in-memory!
+        </p>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+          <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-subtle);">
+            <h4 style="margin-bottom: 0.8rem;">1. Insert Sample Vectors</h4>
+            <button class="btn btn-primary" onclick="seedVectorSample()">Insert 4D Embeddings (NLP Documents)</button>
+            <div id="vecSeedLog" style="margin-top:0.8rem; font-family:var(--font-mono); font-size:0.8rem; color:var(--neon-green);"></div>
+          </div>
+
+          <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-subtle);">
+            <h4 style="margin-bottom: 0.8rem;">2. Query Top-K Nearest Neighbors</h4>
+            <div class="vector-input-row" style="display:flex; gap:0.5rem; margin-bottom:0.8rem;">
+              <input type="text" id="vecQueryInput" value="0.95 0.05 0.02 0.0" 
+                     style="flex:1; background:rgba(0,0,0,0.4); border:1px solid var(--border-subtle); color:#fff; padding:0.4rem; border-radius:6px; font-family:var(--font-mono);">
+              <button class="btn btn-primary" onclick="searchVectors()">VSEARCH</button>
+            </div>
+            <div id="vecResults" style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-main);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: SlowLog -->
+    <div id="tabContentSlowlog" style="display:none;">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">🔥 Microsecond SlowLog & Profiler</span>
+          <button class="btn" onclick="refreshSlowLogs()">Refresh SlowLog</button>
+        </div>
+        <div class="keys-table-container">
+          <table class="v-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Duration (µs)</th>
+                <th>Timestamp</th>
+                <th>Executed Command</th>
+              </tr>
+            </thead>
+            <tbody id="slowLogTableBody">
+              <tr><td colspan="4" style="text-align:center; color:var(--text-dim);">No slow queries recorded. All commands executing in sub-millisecond range!</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 5: Access & Users (ACL) -->
+    <div id="tabContentACL" style="display:none;">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <span class="panel-title">👥 Multi-User Access Control (Redis ACL)</span>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.2rem;">
+              Production Role-Based Access Control, Key Namespacing & Permission Enforcement
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn" onclick="loadACLUsers()">⟳ Refresh Users</button>
+            <button class="btn btn-primary" onclick="openCreateUserModal()">➕ Create New User</button>
+          </div>
+        </div>
+        <div class="keys-table-container">
+          <table class="v-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Allowed Key Pattern</th>
+                <th>Status</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="aclTableBody">
+              <tr><td colspan="5" style="text-align:center; color:var(--text-dim);">Loading ACL accounts...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Key Inspector Modal -->
+  <div class="modal-backdrop" id="keyModal" onclick="if(event.target === this) closeModal();">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h3 id="modalKeyTitle" style="font-family:var(--font-mono); color:var(--neon-cyan);">key:name</h3>
+        <button class="btn" onclick="closeModal()" style="padding:2px 8px;">✕</button>
+      </div>
+      <div style="display:flex; gap:0.6rem; margin-bottom:1rem;" id="modalMetaPills"></div>
+      <div style="background:rgba(0,0,0,0.5); border:1px solid var(--border-subtle); border-radius:8px; padding:1rem; max-height:300px; overflow:auto;">
+        <pre id="modalValuePre" style="font-family:var(--font-mono); font-size:0.85rem; color:#fff;"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Unlock Modal -->
+  <div class="modal-backdrop" id="authModal">
+    <div class="modal-box" style="max-width: 440px; text-align: center;">
+      <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🔒</div>
+      <h3 style="color: var(--neon-cyan); margin-bottom: 0.5rem;">VORTEX SECURITY SHIELD</h3>
+      <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.2rem;">
+        This instance is protected by <code style="color:var(--neon-green)">requirepass</code>. Enter master password to access command studio:
+      </p>
+      <form onsubmit="event.preventDefault(); submitAuthToken();" style="display:flex; flex-direction:column; gap:0.8rem;">
+        <input type="password" id="authPasswordInput" placeholder="Enter requirepass password..." 
+               style="background:rgba(0,0,0,0.6); border:1px solid var(--neon-cyan); color:#fff; padding:0.75rem 1rem; border-radius:8px; font-family:var(--font-mono); font-size:0.95rem; text-align:center;">
+        <label style="display:flex; align-items:center; justify-content:center; gap:0.5rem; font-size:0.8rem; color:var(--text-dim); cursor:pointer; user-select:none;">
+          <input type="checkbox" id="rememberSession" checked style="accent-color:var(--neon-cyan); cursor:pointer;">
+          Remember this session (Stay logged in)
+        </label>
+        <button type="submit" class="btn btn-primary" style="justify-content:center; padding:0.65rem;">Authenticate & Unlock</button>
+        <div id="authErrMsg" style="color:var(--neon-rose); font-size:0.8rem; min-height:1.2rem;"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FlushDB Confirmation Modal -->
+  <div class="modal-backdrop" id="flushModal" onclick="if(event.target === this) closeFlushModal();">
+    <div class="modal-box" style="max-width: 460px; text-align: center; border-color: var(--neon-rose); box-shadow: 0 0 35px rgba(255, 0, 85, 0.4);">
+      <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">⚠️</div>
+      <h3 style="color: var(--neon-rose); margin-bottom: 0.5rem; letter-spacing: 0.5px;">CONFIRM FLUSHDB PURGE</h3>
+      <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.4rem;">
+        Are you sure you want to flush all keys? This will permanently delete all keys, hashes, lists, sets, streams, and AI vector embeddings from memory.
+      </p>
+      <div style="display: flex; gap: 0.8rem; justify-content: center;">
+        <button class="btn" onclick="closeFlushModal()" style="padding: 0.55rem 1.2rem;">Cancel</button>
+        <button class="btn" id="btnConfirmFlush" style="background: linear-gradient(135deg, rgba(255, 0, 85, 0.4), rgba(255, 170, 0, 0.3)); border-color: var(--neon-rose); color: #fff; padding: 0.55rem 1.4rem;" onclick="confirmAndExecuteFlush()">
+          Purge Everything
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create / Edit ACL User Modal -->
+  <div class="modal-backdrop" id="createUserModal" onclick="if(event.target === this) closeCreateUserModal();">
+    <div class="modal-box" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+        <h3 style="color: var(--neon-cyan); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <span>👤</span> Create User Account
+        </h3>
+        <button class="btn" onclick="closeCreateUserModal()" style="padding: 2px 8px;">✕</button>
+      </div>
+      <form onsubmit="event.preventDefault(); submitCreateUser();" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">Username</label>
+          <input type="text" id="aclUsernameInput" placeholder="e.g. app_billing, microservice_auth" required
+                 style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.65rem 0.85rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.9rem;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">Password</label>
+          <input type="password" id="aclPasswordInput" placeholder="Enter secure user password" required
+                 style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.65rem 0.85rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.9rem;">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+          <div>
+            <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">Role Permission</label>
+            <select id="aclRoleSelect" style="width: 100%; background: #161823; border: 1px solid var(--border-subtle); color: #fff; padding: 0.65rem 0.85rem; border-radius: 8px; font-family: var(--font-ui); font-size: 0.85rem;">
+              <option value="readwrite">Read/Write (+@all)</option>
+              <option value="readonly">Read-Only (+@read)</option>
+              <option value="admin">Administrator (Full ACL)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">Key Pattern</label>
+            <input type="text" id="aclPatternInput" value="*" placeholder="* or cache:*"
+                   style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.65rem 0.85rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.9rem;">
+          </div>
+        </div>
+        <div id="aclCreateErrMsg" style="color: var(--neon-rose); font-size: 0.8rem; min-height: 1rem;"></div>
+        <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem;">
+          <button type="button" class="btn" onclick="closeCreateUserModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete ACL User Confirmation Modal -->
+  <div class="modal-backdrop" id="deleteUserModal" onclick="if(event.target === this) closeDeleteUserModal();">
+    <div class="modal-box" style="max-width: 460px; text-align: center; border-color: var(--neon-rose); box-shadow: 0 0 35px rgba(255, 0, 85, 0.4);">
+      <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🗑️</div>
+      <h3 style="color: var(--neon-rose); margin-bottom: 0.5rem; letter-spacing: 0.5px;">CONFIRM USER DELETION</h3>
+      <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.4rem;">
+        Are you sure you want to delete user <b id="deleteTargetUsername" style="color: #fff; font-family: var(--font-mono);"></b>? This will permanently revoke all access and drop active wire connections.
+      </p>
+      <div style="display: flex; gap: 0.8rem; justify-content: center;">
+        <button type="button" class="btn" onclick="closeDeleteUserModal()" style="padding: 0.55rem 1.2rem;">Cancel</button>
+        <button type="button" class="btn" id="btnConfirmDeleteUser" style="background: linear-gradient(135deg, rgba(255, 0, 85, 0.4), rgba(255, 170, 0, 0.3)); border-color: var(--neon-rose); color: #fff; padding: 0.55rem 1.4rem;" onclick="confirmAndExecuteDeleteUser()">
+          Delete User
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- First-Run Dynamic Setup Modal -->
+  <div class="modal-backdrop" id="firstRunModal">
+    <div class="modal-box" style="max-width: 480px; text-align: center; border-color: var(--neon-cyan); box-shadow: 0 0 35px rgba(0, 243, 255, 0.35);">
+      <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🚀</div>
+      <h3 style="color: var(--neon-cyan); margin-bottom: 0.5rem;">VORTEX INITIAL SETUP</h3>
+      <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.2rem;">
+        Welcome to your new VortexKV in-memory database! No master password has been configured yet. Protect your server by creating your master admin password below:
+      </p>
+      <form onsubmit="event.preventDefault(); submitFirstRunSetup();" style="display: flex; flex-direction: column; gap: 0.8rem;">
+        <input type="password" id="firstRunPassword" placeholder="Enter new master password..." required
+               style="background: rgba(0,0,0,0.6); border: 1px solid var(--neon-cyan); color: #fff; padding: 0.75rem 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.95rem; text-align: center;">
+        <input type="password" id="firstRunConfirm" placeholder="Confirm master password..." required
+               style="background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); color: #fff; padding: 0.75rem 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.95rem; text-align: center;">
+        <button type="submit" class="btn btn-primary" style="justify-content: center; padding: 0.65rem;">Initialize & Lock Server</button>
+        <div id="firstRunErrMsg" style="color: var(--neon-rose); font-size: 0.8rem; min-height: 1.2rem;"></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Authentication State Management (Single Login Persistent Session)
+    let authToken = localStorage.getItem('vortex_token') || sessionStorage.getItem('vortex_token') || '';
+
+    async function authFetch(url, options = {}) {
+      options.headers = options.headers || {};
+      if (authToken) {
+        options.headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      options.credentials = 'same-origin';
+      const res = await fetch(url, options);
+      if (res.status === 401) {
+        document.getElementById('authModal').classList.add('active');
+        throw new Error("Authentication required");
+      }
+      return res;
+    }
+
+    async function checkAuthStatus() {
+      try {
+        const res = await fetch('/api/auth/status', {
+          credentials: 'same-origin',
+          headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+        const data = await res.json();
+        if (data.first_run) {
+          document.getElementById('firstRunModal').classList.add('active');
+          document.getElementById('authModal').classList.remove('active');
+          return;
+        } else {
+          const fr = document.getElementById('firstRunModal');
+          if (fr) fr.classList.remove('active');
+        }
+
+        if (data.auth_required && !data.authenticated) {
+          document.getElementById('authModal').classList.add('active');
+        } else {
+          document.getElementById('authModal').classList.remove('active');
+        }
+      } catch (e) {}
+    }
+
+    async function submitAuthToken() {
+      const pass = document.getElementById('authPasswordInput').value.trim();
+      if (!pass) return;
+      const remember = document.getElementById('rememberSession') ? document.getElementById('rememberSession').checked : true;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pass })
+        });
+        const data = await res.json();
+        if (data.authenticated) {
+          authToken = pass;
+          if (remember) {
+            localStorage.setItem('vortex_token', pass);
+            sessionStorage.removeItem('vortex_token');
+          } else {
+            sessionStorage.setItem('vortex_token', pass);
+            localStorage.removeItem('vortex_token');
+          }
+
+          document.getElementById('authModal').classList.remove('active');
+          document.getElementById('authErrMsg').innerText = '';
+          connectWebSocket();
+          refreshGalaxy();
+          refreshKeysTable();
+          playTone(880, 'sine', 0.12);
+        } else {
+          document.getElementById('authErrMsg').innerText = 'Invalid password. Access denied.';
+          playTone(200, 'sawtooth', 0.2);
+        }
+      } catch (e) {
+        document.getElementById('authErrMsg').innerText = 'Connection error';
+      }
+    }
+
+    async function lockStudioDeck() {
+      authToken = '';
+      localStorage.removeItem('vortex_token');
+      sessionStorage.removeItem('vortex_token');
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      } catch (e) {}
+      document.getElementById('authPasswordInput').value = '';
+      document.getElementById('authErrMsg').innerText = '';
+      document.getElementById('authModal').classList.add('active');
+      playTone(300, 'sawtooth', 0.15);
+    }
+
+    // Audio Synthesizer for Retro Sci-Fi Cyberpunk feedback
+    let audioEnabled = true;
+    let audioCtx = null;
+
+    function playTone(freq, type, duration) {
+      if (!audioEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    document.getElementById('btnAudioToggle').addEventListener('click', () => {
+      audioEnabled = !audioEnabled;
+      document.getElementById('audioLabel').innerText = audioEnabled ? 'Audio FX' : 'Muted';
+      playTone(audioEnabled ? 880 : 330, 'triangle', 0.1);
+    });
+
+    // Tab Navigation
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.dataset.tab;
+        document.getElementById('tabContentStudio').style.display = target === 'studio' ? 'block' : 'none';
+        document.getElementById('tabContentKeyspace').style.display = target === 'keyspace' ? 'block' : 'none';
+        document.getElementById('tabContentVectors').style.display = target === 'vectors' ? 'block' : 'none';
+        document.getElementById('tabContentSlowlog').style.display = target === 'slowlog' ? 'block' : 'none';
+        document.getElementById('tabContentACL').style.display = target === 'acl' ? 'block' : 'none';
+        if (target === 'keyspace') refreshKeysTable();
+        if (target === 'slowlog') refreshSlowLogs();
+        if (target === 'acl') loadACLUsers();
+        playTone(520, 'sine', 0.08);
+      });
+    });
+
+    // Sparklines History
+    const opsHistory = new Array(30).fill(0);
+    const latencyHistory = new Array(30).fill(0);
+
+    function drawSparkline(canvasId, data, color) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.offsetWidth * 2;
+      const h = canvas.height = canvas.offsetHeight * 2;
+      ctx.clearRect(0, 0, w, h);
+
+      const max = Math.max(...data, 10);
+      const step = w / (data.length - 1);
+
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      data.forEach((val, i) => {
+        const x = i * step;
+        const y = h - (val / max) * (h - 8) - 4;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // gradient fill under sparkline
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, color.replace(')', ', 0.25)').replace('rgb', 'rgba'));
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // WebSocket Real-time stream
+    let ws;
+    function connectWebSocket() {
+      if (ws) {
+        try { ws.close(); } catch(e) {}
+      }
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${location.host}/ws` + (authToken ? `?token=${encodeURIComponent(authToken)}` : '');
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        document.getElementById('wsStatusText').innerText = 'REALTIME 60FPS';
+        document.getElementById('wsStatusBadge').style.borderColor = 'rgba(57, 255, 20, 0.4)';
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'metrics') {
+            updateDashboard(msg.data);
+          } else if (msg.type === 'set' || msg.type === 'del' || msg.type === 'flush') {
+            refreshGalaxy();
+            playTone(700, 'sine', 0.05);
+          }
+        } catch (e) {}
+      };
+
+      ws.onclose = () => {
+        document.getElementById('wsStatusText').innerText = 'RECONNECTING...';
+        document.getElementById('wsStatusBadge').style.borderColor = 'rgba(255, 0, 85, 0.4)';
+        setTimeout(connectWebSocket, 2500);
+      };
+    }
+
+    function updateDashboard(data) {
+      document.getElementById('valOps').innerText = Number(data.ops_per_second || 0).toLocaleString();
+      document.getElementById('valP99').innerText = (data.p99_latency_micro || 0).toFixed(1);
+      document.getElementById('valMem').innerText = (data.allocated_bytes / (1024 * 1024)).toFixed(2);
+      document.getElementById('valKeys').innerText = data.total_keys || 0;
+      document.getElementById('valClients').innerText = `${data.active_connections || 1} Active Wire Connections`;
+
+      opsHistory.push(data.ops_per_second || 0);
+      opsHistory.shift();
+      drawSparkline('canvasOps', opsHistory, 'rgb(57, 255, 20)');
+
+      latencyHistory.push(data.p99_latency_micro || 0);
+      latencyHistory.shift();
+      drawSparkline('canvasLatency', latencyHistory, 'rgb(0, 243, 255)');
+    }
+
+    // 2D Galaxy Visualizer
+    const canvas = document.getElementById('galaxyCanvas');
+    const ctx = canvas.getContext('2d');
+    let galaxyNodes = [];
+    let galaxyParticles = [];
+
+    const typeColors = {
+      string: '#00f3ff',
+      hash: '#b026ff',
+      list: '#39ff14',
+      set: '#ffaa00',
+      zset: '#ff0055',
+      vector: '#00d4ff',
+      stream: '#ffffff'
+    };
+
+    function initGalaxyParticles() {
+      galaxyParticles = [];
+      for (let i = 0; i < 70; i++) {
+        galaxyParticles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          size: Math.random() * 1.5 + 0.5,
+          alpha: Math.random() * 0.5 + 0.2
+        });
+      }
+    }
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.offsetWidth;
+      canvas.height = canvas.parentElement.offsetHeight;
+      initGalaxyParticles();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    async function refreshGalaxy() {
+      try {
+        const res = await authFetch('/api/keys?limit=40');
+        const json = await res.json();
+        const keys = json.keys || [];
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        galaxyNodes = keys.map((k, i) => {
+          const angle = (i / Math.max(keys.length, 1)) * Math.PI * 2;
+          const radius = 80 + (i % 3) * 60 + Math.random() * 20;
+          return {
+            key: k.key,
+            type: k.type,
+            x: centerX + Math.cos(angle) * radius,
+            y: centerY + Math.sin(angle) * radius,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.4,
+            baseRadius: 10 + Math.min(k.size || 1, 15),
+            color: typeColors[k.type] || '#00f3ff'
+          };
+        });
+      } catch (e) {}
+    }
+
+    function renderGalaxy() {
+      ctx.fillStyle = 'rgba(6, 9, 18, 0.25)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw floating background cosmic particles
+      galaxyParticles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 243, 255, ${p.alpha})`;
+        ctx.fill();
+      });
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      // Draw Center Vortex core
+      const coreGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 35);
+      coreGrad.addColorStop(0, 'rgba(0, 243, 255, 0.8)');
+      coreGrad.addColorStop(0.5, 'rgba(176, 38, 255, 0.3)');
+      coreGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Render Nodes & Links
+      galaxyNodes.forEach((node, i) => {
+        node.x += node.vx;
+        node.y += node.vy;
+
+        // spring toward center orbit
+        const dx = centerX - node.x;
+        const dy = centerY - node.y;
+        node.vx += dx * 0.0003;
+        node.vy += dy * 0.0003;
+
+        // draw connector line to center
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(node.x, node.y);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // draw glowing node
+        ctx.save();
+        ctx.shadowColor = node.color;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = node.color;
+        ctx.fill();
+        ctx.restore();
+
+        // label
+        ctx.font = '10px "JetBrains Mono"';
+        ctx.fillStyle = '#f0f4fc';
+        ctx.fillText(node.key, node.x + node.baseRadius + 6, node.y + 3);
+      });
+
+      requestAnimationFrame(renderGalaxy);
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      for (const node of galaxyNodes) {
+        const dist = Math.hypot(node.x - clickX, node.y - clickY);
+        if (dist <= node.baseRadius + 8) {
+          inspectKey(node.key);
+          playTone(660, 'triangle', 0.1);
+          break;
+        }
+      }
+    });
+
+    // Command Execution (Terminal & Quick Chips)
+    async function executeCommand(cmdStr) {
+      if (!cmdStr || !cmdStr.trim()) return;
+      playTone(440, 'square', 0.06);
+
+      const out = document.getElementById('termOutput');
+      const entry = document.createElement('div');
+      entry.className = 'terminal-entry';
+
+      try {
+        const res = await authFetch('/api/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: cmdStr })
+        });
+        const data = await res.json();
+
+        let resClass = 'res-val';
+        if (data.is_error) resClass = 'res-err';
+        else if (data.result === 'OK' || data.result === 'PONG') resClass = 'res-ok';
+        else if (data.type === ':') resClass = 'res-int';
+
+        let resText = data.result;
+        if (data.array_result && data.array_result.length > 0) {
+          resText = data.array_result.map((item, idx) => `${idx + 1}) "${item}"`).join('\n');
+        }
+
+        entry.innerHTML = `
+          <div class="cmd-line">
+            <span class="cmd-prompt">vortex:7379&gt;</span>
+            <span class="cmd-text">${escapeHtml(cmdStr)}</span>
+            <span class="cmd-duration">${data.duration_micro} µs</span>
+          </div>
+          <div class="cmd-res ${resClass}">${escapeHtml(resText)}</div>
+        `;
+        out.appendChild(entry);
+        out.scrollTop = out.scrollHeight;
+
+        playTone(data.is_error ? 220 : 880, 'sine', 0.08);
+      } catch (e) {
+        entry.innerHTML = `
+          <div class="cmd-line">
+            <span class="cmd-prompt">vortex:7379&gt;</span>
+            <span class="cmd-text">${escapeHtml(cmdStr)}</span>
+          </div>
+          <div class="cmd-res res-err">Execution Error: ${e.message}</div>
+        `;
+        out.appendChild(entry);
+      }
+    }
+
+    function submitCommand() {
+      const input = document.getElementById('termInput');
+      const val = input.value.trim();
+      if (!val) return;
+      executeCommand(val);
+      input.value = '';
+    }
+
+    function executeQuick(cmd) {
+      document.getElementById('termInput').value = cmd;
+      executeCommand(cmd);
+    }
+
+    // Seed Sample Data
+    document.getElementById('btnSeedData').addEventListener('click', async () => {
+      playTone(600, 'sine', 0.1);
+      await executeCommand('MSET user:101 "Alice" user:102 "Bob" user:103 "Carol"');
+      await executeCommand('HSET user:101:profile role "Engineer" tier "Ultra" stars 5');
+      await executeCommand('RPUSH global:events "user_login" "token_mint" "cache_sync"');
+      await executeCommand('ZADD highscores 9850 "Alpha" 8720 "Beta" 9999 "Nova"');
+      await executeCommand('XADD telemetry:stream * temp "22.4C" load "0.18" status "optimal"');
+      await executeCommand('VADD embeddings doc_neural 0.88 0.12 0.05 0.01');
+      await executeCommand('VADD embeddings doc_quantum 0.15 0.92 0.08 0.03');
+      refreshGalaxy();
+    });
+
+    // FlushDB Custom Modal
+    document.getElementById('btnFlush').addEventListener('click', () => {
+      openFlushModal();
+    });
+
+    function openFlushModal() {
+      document.getElementById('flushModal').classList.add('active');
+      playTone(300, 'sawtooth', 0.1);
+    }
+
+    function closeFlushModal() {
+      document.getElementById('flushModal').classList.remove('active');
+    }
+
+    async function confirmAndExecuteFlush() {
+      closeFlushModal();
+      playTone(200, 'sawtooth', 0.2);
+      await executeCommand('FLUSHDB');
+      refreshGalaxy();
+      refreshKeysTable();
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        closeFlushModal();
+      }
+    });
+
+    // Keyspace Table
+    async function refreshKeysTable() {
+      const pattern = document.getElementById('keySearchInput').value || '*';
+      try {
+        const res = await authFetch(`/api/keys?pattern=${encodeURIComponent(pattern)}&limit=100`);
+        const data = await res.json();
+        const tbody = document.getElementById('keysTableBody');
+        if (!data.keys || data.keys.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-dim);">No keys matching pattern</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.keys.map(k => `
+          <tr>
+            <td style="color:#fff; font-weight:600;">${escapeHtml(k.key)}</td>
+            <td><span class="type-pill type-${k.type}">${k.type}</span></td>
+            <td style="color:${k.ttl < 0 ? 'var(--text-dim)' : 'var(--neon-amber)'};">${k.ttl < 0 ? 'PERSISTENT' : k.ttl + 's'}</td>
+            <td style="color:var(--text-dim); font-size:0.85rem;">${formatSize(k.type, k.size)}</td>
+            <td>
+              <button class="btn" style="padding:2px 8px; font-size:0.75rem;" onclick="inspectKey(decodeURIComponent('${encodeURIComponent(k.key)}'))">Inspect</button>
+              <button class="btn" style="padding:2px 8px; font-size:0.75rem; color:var(--neon-rose);" onclick="deleteKey(decodeURIComponent('${encodeURIComponent(k.key)}'))">Del</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {}
+    }
+
+    function formatSize(type, size) {
+      if (type === 'string') return `${size} bytes`;
+      if (type === 'hash') return `${size} field${size === 1 ? '' : 's'}`;
+      if (type === 'list' || type === 'set' || type === 'zset') return `${size} item${size === 1 ? '' : 's'}`;
+      if (type === 'vector') return `${size} vector${size === 1 ? '' : 's'}`;
+      if (type === 'stream') return `${size} entr${size === 1 ? 'y' : 'ies'}`;
+      return `${size} bytes`;
+    }
+
+    async function inspectKey(key) {
+      try {
+        const res = await authFetch(`/api/key?name=${encodeURIComponent(key)}`);
+        const data = await res.json();
+        document.getElementById('modalKeyTitle').innerText = data.key;
+        document.getElementById('modalMetaPills').innerHTML = `
+          <span class="type-pill type-${escapeHtml(data.type)}">${escapeHtml(data.type)}</span>
+          <span class="chip">TTL: ${data.ttl < 0 ? 'None' : data.ttl + 's'}</span>
+        `;
+        document.getElementById('modalValuePre').innerText = JSON.stringify(data.value, null, 2);
+        document.getElementById('keyModal').classList.add('active');
+      } catch (e) {
+        alert('Could not fetch key detail: ' + e.message);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('keyModal').classList.remove('active');
+    }
+
+    async function deleteKey(key) {
+      await executeCommand(`DEL "${key.replace(/"/g, '\\"')}"`);
+      refreshKeysTable();
+      refreshGalaxy();
+    }
+
+    // AI Vector Search Sandbox
+    async function seedVectorSample() {
+      await executeCommand('VADD embeddings doc_ai 0.95 0.05 0.0 0.0');
+      await executeCommand('VADD embeddings doc_science 0.1 0.9 0.0 0.0');
+      await executeCommand('VADD embeddings doc_finance 0.0 0.1 0.9 0.0');
+      await executeCommand('VADD embeddings doc_hybrid 0.7 0.6 0.2 0.1');
+      document.getElementById('vecSeedLog').innerText = '✓ Seeded 4 embedding vectors into "embeddings" key!';
+    }
+
+    async function searchVectors() {
+      const q = document.getElementById('vecQueryInput').value.trim();
+      try {
+        const res = await authFetch('/api/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: `VSEARCH embeddings 3 cosine ${q}` })
+        });
+        const data = await res.json();
+        const div = document.getElementById('vecResults');
+        if (data.is_error) {
+          div.innerHTML = `<span style="color:var(--neon-rose)">${data.result}</span>`;
+        } else {
+          div.innerHTML = `
+            <div style="margin-top:0.5rem; font-weight:700; color:var(--neon-cyan)">Nearest Neighbors:</div>
+            <pre style="margin-top:0.3rem;">${escapeHtml(data.result)}</pre>
+          `;
+        }
+      } catch (e) {}
+    }
+
+    // SlowLog Refresh
+    async function refreshSlowLogs() {
+      try {
+        const res = await authFetch('/api/slowlog');
+        const logs = await res.json();
+        const tbody = document.getElementById('slowLogTableBody');
+        if (!logs || logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-dim);">No slow queries. All commands executed in sub-millisecond range!</td></tr>';
+          return;
+        }
+        tbody.innerHTML = logs.map(l => `
+          <tr>
+            <td>${l.id}</td>
+            <td style="color:var(--neon-rose); font-weight:700;">${l.duration_micro} µs</td>
+            <td>${new Date(l.timestamp * 1000).toLocaleTimeString()}</td>
+            <td><code>${escapeHtml(l.command.join(' '))}</code></td>
+          </tr>
+        `).join('');
+      } catch (e) {}
+    }
+
+    // Dynamic First-Run Setup & Multi-User ACL
+    async function submitFirstRunSetup() {
+      const p1 = document.getElementById('firstRunPassword').value;
+      const p2 = document.getElementById('firstRunConfirm').value;
+      if (!p1) return;
+      if (p1 !== p2) {
+        document.getElementById('firstRunErrMsg').innerText = 'Passwords do not match!';
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: p1 })
+        });
+        const data = await res.json();
+        if (data.success) {
+          authToken = p1;
+          localStorage.setItem('vortex_token', p1);
+          document.getElementById('firstRunModal').classList.remove('active');
+          playTone(880, 'sine', 0.15);
+          connectWebSocket();
+          refreshGalaxy();
+          refreshKeysTable();
+        } else {
+          document.getElementById('firstRunErrMsg').innerText = data.error || 'Setup failed';
+        }
+      } catch (e) {
+        document.getElementById('firstRunErrMsg').innerText = 'Connection error';
+      }
+    }
+
+    async function loadACLUsers() {
+      try {
+        const res = await authFetch('/api/acl/users');
+        const data = await res.json();
+        const tbody = document.getElementById('aclTableBody');
+        if (!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-dim);">No users found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.map(u => {
+          const isDefault = u.username === 'default';
+          const roleBadge = u.role === 'admin' 
+            ? `<span style="background:rgba(255,0,85,0.2); color:var(--neon-rose); padding:2px 8px; border-radius:4px; font-weight:600; font-size:0.75rem;">ADMIN</span>`
+            : u.role === 'readonly'
+            ? `<span style="background:rgba(255,170,0,0.2); color:var(--neon-amber); padding:2px 8px; border-radius:4px; font-weight:600; font-size:0.75rem;">READ-ONLY</span>`
+            : `<span style="background:rgba(0,243,255,0.2); color:var(--neon-cyan); padding:2px 8px; border-radius:4px; font-weight:600; font-size:0.75rem;">READ-WRITE</span>`;
+          
+          const statusBadge = u.enabled 
+            ? `<span style="color:var(--neon-green)">● Active</span>`
+            : `<span style="color:var(--text-dim)">○ Inactive</span>`;
+
+          const deleteBtn = isDefault 
+            ? `<span style="font-size:0.8rem; color:var(--text-dim);">System Root</span>`
+            : `<button class="btn" style="padding:2px 8px; border-color:var(--neon-rose); color:var(--neon-rose);" onclick="deleteACLUser('${escapeHtml(u.username)}')">Delete</button>`;
+
+          const patternDisplay = (u.key_patterns && u.key_patterns.length > 0)
+            ? u.key_patterns.join(', ')
+            : (u.key_pattern || '*');
+
+          return `
+            <tr>
+              <td><b style="font-family:var(--font-mono); color:#fff;">${escapeHtml(u.username)}</b></td>
+              <td>${roleBadge}</td>
+              <td><code style="color:var(--neon-cyan);">${escapeHtml(patternDisplay)}</code></td>
+              <td>${statusBadge}</td>
+              <td style="text-align: right;">${deleteBtn}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {}
+    }
+
+    function openCreateUserModal() {
+      document.getElementById('aclUsernameInput').value = '';
+      document.getElementById('aclPasswordInput').value = '';
+      document.getElementById('aclRoleSelect').value = 'readwrite';
+      document.getElementById('aclPatternInput').value = '*';
+      document.getElementById('aclCreateErrMsg').innerText = '';
+      document.getElementById('createUserModal').classList.add('active');
+    }
+
+    function closeCreateUserModal() {
+      document.getElementById('createUserModal').classList.remove('active');
+    }
+
+    async function submitCreateUser() {
+      const username = document.getElementById('aclUsernameInput').value.trim();
+      const password = document.getElementById('aclPasswordInput').value;
+      const role = document.getElementById('aclRoleSelect').value;
+      const pattern = document.getElementById('aclPatternInput').value.trim() || '*';
+      if (!username || !password) return;
+
+      try {
+        const res = await authFetch('/api/acl/user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, role, key_pattern: pattern, enabled: true })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeCreateUserModal();
+          loadACLUsers();
+          playTone(660, 'sine', 0.1);
+        } else {
+          document.getElementById('aclCreateErrMsg').innerText = data.error || 'Failed to save user';
+        }
+      } catch (e) {
+        document.getElementById('aclCreateErrMsg').innerText = 'Connection error';
+      }
+    }
+
+    let pendingDeleteUser = '';
+
+    function deleteACLUser(username) {
+      pendingDeleteUser = username;
+      const el = document.getElementById('deleteTargetUsername');
+      if (el) el.innerText = username;
+      document.getElementById('deleteUserModal').classList.add('active');
+      playTone(330, 'sawtooth', 0.1);
+    }
+
+    function closeDeleteUserModal() {
+      pendingDeleteUser = '';
+      document.getElementById('deleteUserModal').classList.remove('active');
+    }
+
+    async function confirmAndExecuteDeleteUser() {
+      if (!pendingDeleteUser) return;
+      const username = pendingDeleteUser;
+      try {
+        const res = await authFetch('/api/acl/user/delete?username=' + encodeURIComponent(username), {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username })
+        });
+        const data = await res.json();
+        closeDeleteUserModal();
+        if (data.success) {
+          loadACLUsers();
+          playTone(440, 'triangle', 0.12);
+        } else {
+          alert('Failed to delete user: ' + (data.error || 'unknown error'));
+        }
+      } catch (e) {
+        closeDeleteUserModal();
+        alert('Network error while deleting user');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      if (typeof str !== 'string') return String(str);
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+        .replace(/`/g, "&#96;");
+    }
+
+    // Startup
+    checkAuthStatus();
+    connectWebSocket();
+    refreshGalaxy();
+    renderGalaxy();
+  </script>
+</body>
+</html>
