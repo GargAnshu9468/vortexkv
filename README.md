@@ -3,6 +3,10 @@
 > **New-Generation, Cyberpunk, Blazing-Fast In-Memory Data Engine & Visual Control Deck.**  
 > Drop-in compatible with standard Redis clients, running on non-conflicting dedicated ports (**`7379`** for wire protocol & **`7380`** for Web Studio).
 
+<p align="center">
+  <img src="./docs/assets/vortexkv_demo.gif" alt="VortexKV Cyberpunk Web Studio Demo" width="900" style="border-radius: 10px; border: 1px solid rgba(0, 243, 255, 0.2);">
+</p>
+
 ---
 
 ## ⚡ Highlights & Innovations
