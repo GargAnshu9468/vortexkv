@@ -6,8 +6,8 @@ FROM golang:1.24-alpine AS builder
 WORKDIR /build
 
 # Copy Go module definitions and download dependencies
-COPY go.mod ./
-RUN go mod download || true
+COPY go.mod go.sum ./
+RUN go mod download
 
 # Copy full source tree
 COPY . .
