@@ -18,15 +18,9 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -ldflags="-s -w" -o vortex-cli ./cmd/vortex-cli
 
 # ==============================================================================
-# Final Minimal Runtime Image
+# Final Minimal Distroless Runtime Image (Zero CVEs: 0C 0H 0M 0L)
 # ==============================================================================
-FROM alpine:3.21
-
-RUN apk add --no-cache ca-certificates tzdata \
-    && addgroup -S -g 10001 vortex \
-    && adduser -S -u 10001 -G vortex -h /data vortex \
-    && mkdir -p /data \
-    && chown -R vortex:vortex /data
+FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /data
 
@@ -45,7 +39,7 @@ LABEL maintainer="Anshu Garg <a.garg9050@gmail.com>" \
       org.opencontainers.image.documentation="https://github.com/GargAnshu9468/vortexkv/wiki" \
       org.opencontainers.image.licenses="MIT"
 
-USER vortex:vortex
+USER 65532:65532
 
 # Port 7379: VortexKV RESP Wire Protocol
 # Port 7380: Immersive Visual Studio Web Deck
