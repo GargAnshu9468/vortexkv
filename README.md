@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="./docs/assets/vortexkv_demo.gif" alt="VortexKV Cyberpunk Web Studio Demo" width="900" style="border-radius: 10px; border: 1px solid rgba(0, 243, 255, 0.2);">
+  <img src="./docs/assets/vortexkv_studio.png" alt="VortexKV Cyberpunk Web Studio Command Deck" width="900" style="border-radius: 10px; border: 1px solid rgba(0, 243, 255, 0.2);">
 </p>
 
 ---
