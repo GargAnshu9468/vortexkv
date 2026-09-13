@@ -1,12 +1,18 @@
-# 🌌 VortexKV — Hyper-Performance Redis & Immersive Command Studio
+<p align="center">
+  <img src="https://raw.githubusercontent.com/GargAnshu9468/vortexkv/main/docs/assets/vortexkv_logo.png" alt="VortexKV Logo" width="160" style="border-radius: 20px; box-shadow: 0 0 30px rgba(0, 243, 255, 0.4);">
+</p>
 
-> **New-Generation, Cyberpunk, Blazing-Fast In-Memory Data Engine & Visual Control Deck.**  
-> Drop-in compatible with standard Redis clients, running on non-conflicting dedicated ports (**`7379`** for wire protocol & **`7380`** for Web Studio).
+# <p align="center">🌌 VortexKV</p>
+<p align="center">
+  <strong>Next-Generation, Cyberpunk, Blazing-Fast In-Memory Data Engine & Visual Control Deck</strong><br>
+  <em>Drop-in Redis Alternative • Native Vector Search • Redis Streams • Cluster Gossip • Lua 5.1 & Wasm</em>
+</p>
 
 <p align="center">
   <a href="https://github.com/GargAnshu9468/vortexkv/discussions"><img src="https://img.shields.io/badge/Discussions-Join_Community-cyan?logo=github&style=flat-square" alt="GitHub Discussions"></a>
   <a href="https://github.com/GargAnshu9468/vortexkv/wiki"><img src="https://img.shields.io/badge/Wiki-Documentation-blue?logo=gitbook&style=flat-square" alt="Wiki Documentation"></a>
   <a href="https://garganshu9468.github.io/vortexkv/"><img src="https://img.shields.io/badge/Live_Demo-Interactive_Sandbox-00f3ff?style=flat-square" alt="Live Demo"></a>
+  <a href="https://hub.docker.com/r/ianshugarg/vortexkv"><img src="https://img.shields.io/docker/pulls/ianshugarg/vortexkv?style=flat-square&color=00ffcc" alt="Docker Pulls"></a>
   <a href="https://github.com/GargAnshu9468/vortexkv/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
 </p>
 

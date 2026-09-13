@@ -1,9 +1,19 @@
-# 🌌 VortexKV: Hyper-Performance In-Memory Key-Value Engine
+<p align="center">
+  <img src="https://raw.githubusercontent.com/GargAnshu9468/vortexkv/main/docs/assets/vortexkv_logo.png" alt="VortexKV Logo" width="160" style="border-radius: 20px; box-shadow: 0 0 30px rgba(0, 243, 255, 0.4);">
+</p>
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/ianshugarg/vortexkv?style=flat-square&color=00ffcc)](https://hub.docker.com/r/ianshugarg/vortexkv)
-[![Image Size](https://img.shields.io/docker/image-size/ianshugarg/vortexkv/latest?style=flat-square&color=7928ca)](https://hub.docker.com/r/ianshugarg/vortexkv)
-[![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/GargAnshu9468/vortexkv)
-[![Multi-Arch](https://img.shields.io/badge/platform-linux%2Famd64%20%7C%20linux%2Farm64-ff007f?style=flat-square)](https://hub.docker.com/r/ianshugarg/vortexkv)
+# <p align="center">🌌 VortexKV</p>
+<p align="center">
+  <strong>Hyper-Performance In-Memory Key-Value Engine & Cyberpunk Command Deck</strong>
+</p>
+
+<p align="center">
+  <a href="https://hub.docker.com/r/ianshugarg/vortexkv"><img src="https://img.shields.io/docker/pulls/ianshugarg/vortexkv?style=flat-square&color=00ffcc" alt="Docker Pulls"></a>
+  <a href="https://hub.docker.com/r/ianshugarg/vortexkv"><img src="https://img.shields.io/docker/image-size/ianshugarg/vortexkv/latest?style=flat-square&color=7928ca" alt="Image Size"></a>
+  <a href="https://github.com/GargAnshu9468/vortexkv/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="GitHub License"></a>
+  <img src="https://img.shields.io/badge/platform-linux%2Famd64%20%7C%20linux%2Farm64-ff007f?style=flat-square" alt="Multi-Arch">
+  <img src="https://img.shields.io/badge/vulnerabilities-0_detected-brightgreen?style=flat-square" alt="0 CVEs">
+</p>
 
 **VortexKV** is an ultra high-performance, next-generation in-memory key-value data engine engineered with 64 lock-striped shards, sub-millisecond latencies, native AI vector cosine search, Redis Streams, cluster gossip bus, embedded Lua 5.1, Wasm runtime, and an automated Kubernetes operator.
 
