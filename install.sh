@@ -72,13 +72,23 @@ elif command -v go >/dev/null 2>&1; then
     $SUDO mv /tmp/vortex-server "$INSTALL_DIR/vortex-server"
     $SUDO mv /tmp/vortex-cli "$INSTALL_DIR/vortex-cli"
 else
-    printf "${CYAN}   Downloading release binary for %s-%s...${NC}\n" "$OS" "$ARCH"
-    # Fallback release download URL (customizable with GitHub releases)
-    RELEASE_URL="https://github.com/GargAnshu9468/vortexkv/releases/latest/download/vortexkv-${OS}-${ARCH}.tar.gz"
+    LATEST_TAG=$(curl -fsSL https://api.github.com/repos/GargAnshu9468/vortexkv/releases/latest 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "v1.0.0")
+    if [ -z "$LATEST_TAG" ]; then
+        LATEST_TAG="v1.0.0"
+    fi
+    RELEASE_URL="https://github.com/GargAnshu9468/vortexkv/releases/download/${LATEST_TAG}/vortexkv-${LATEST_TAG}-${OS}-${ARCH}.tar.gz"
     curl -fsSL "$RELEASE_URL" -o /tmp/vortex.tar.gz
     tar -xzf /tmp/vortex.tar.gz -C /tmp/
-    $SUDO mv /tmp/vortex-server "$INSTALL_DIR/vortex-server"
-    $SUDO mv /tmp/vortex-cli "$INSTALL_DIR/vortex-cli"
+    PKG_DIR="/tmp/vortexkv-${LATEST_TAG}-${OS}-${ARCH}"
+    if [ -d "$PKG_DIR" ]; then
+        $SUDO mv "$PKG_DIR/vortex-server" "$INSTALL_DIR/vortex-server"
+        $SUDO mv "$PKG_DIR/vortex-cli" "$INSTALL_DIR/vortex-cli"
+        rm -rf "$PKG_DIR" /tmp/vortex.tar.gz
+    elif [ -f "/tmp/vortex-server" ]; then
+        $SUDO mv /tmp/vortex-server "$INSTALL_DIR/vortex-server"
+        $SUDO mv /tmp/vortex-cli "$INSTALL_DIR/vortex-cli"
+        rm -f /tmp/vortex.tar.gz
+    fi
 fi
 
 $SUDO chmod +x "$INSTALL_DIR/vortex-server"
