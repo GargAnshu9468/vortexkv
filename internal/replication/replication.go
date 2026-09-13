@@ -517,3 +517,10 @@ func (rm *ReplicationManager) GetStatus() ReplicationStatus {
 	}
 }
 
+// GetSyncState returns the current synchronization state in a thread-safe manner
+func (rm *ReplicationManager) GetSyncState() string {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+	return rm.syncState
+}
+

@@ -79,6 +79,10 @@ func TestGossipHeartbeatAndPFail(t *testing.T) {
 	cm1.NodeTimeout = 400 * time.Millisecond
 	cm2.NodeTimeout = 400 * time.Millisecond
 
+	// Register nodes manually BEFORE starting the background gossip buses
+	cm1.Nodes[cm2.Self.ID] = cm2.Self
+	cm2.Nodes[cm1.Self.ID] = cm1.Self
+
 	if err := cm1.StartBus(); err != nil {
 		t.Fatalf("Failed to start cm1 bus: %v", err)
 	}
@@ -87,10 +91,6 @@ func TestGossipHeartbeatAndPFail(t *testing.T) {
 	if err := cm2.StartBus(); err != nil {
 		t.Fatalf("Failed to start cm2 bus: %v", err)
 	}
-
-	// Register nodes manually
-	cm1.Nodes[cm2.Self.ID] = cm2.Self
-	cm2.Nodes[cm1.Self.ID] = cm1.Self
 
 	// Allow one or two heartbeat cycles
 	time.Sleep(350 * time.Millisecond)
@@ -152,28 +152,37 @@ func TestAutomaticFailoverElection(t *testing.T) {
 	replica.Nodes[master.Self.ID].Fail = true
 	replica.mu.Unlock()
 
-	promotedCalled := false
+	promotedCh := make(chan struct{}, 1)
 	replica.OnPromote = func() {
-		promotedCalled = true
+		select {
+		case promotedCh <- struct{}{}:
+		default:
+		}
 	}
 
 	// Trigger promotion
 	replica.PromoteReplica(master.Self.ID)
 
 	replica.mu.RLock()
-	defer replica.mu.RUnlock()
+	role := replica.Self.Role
+	masterID := replica.Self.MasterID
+	slots := replica.Self.SlotCount()
+	replica.mu.RUnlock()
 
-	if replica.Self.Role != "master" {
-		t.Fatalf("Expected replica role to become 'master', got %s", replica.Self.Role)
+	if role != "master" {
+		t.Fatalf("Expected replica role to become 'master', got %s", role)
 	}
-	if replica.Self.MasterID != "-" {
-		t.Fatalf("Expected master ID to be '-', got %s", replica.Self.MasterID)
+	if masterID != "-" {
+		t.Fatalf("Expected master ID to be '-', got %s", masterID)
 	}
-	if replica.Self.SlotCount() != 16384 {
-		t.Fatalf("Expected replica to inherit all 16384 slots, got %d", replica.Self.SlotCount())
+	if slots != 16384 {
+		t.Fatalf("Expected replica to inherit all 16384 slots, got %d", slots)
 	}
-	time.Sleep(50 * time.Millisecond)
-	if !promotedCalled {
+
+	select {
+	case <-promotedCh:
+		// success
+	case <-time.After(500 * time.Millisecond):
 		t.Fatalf("Expected OnPromote callback to be called")
 	}
 }

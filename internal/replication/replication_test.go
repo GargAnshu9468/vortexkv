@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -74,12 +75,21 @@ func TestReplicationLifecycleAndSync(t *testing.T) {
 	}()
 
 	// 3. Setup Replica replication manager and local storage
+	var storeMu sync.RWMutex
 	replicaStore := make(map[string]string)
 	applyOnReplica := func(args []string) {
 		cmd := strings.ToUpper(args[0])
 		if cmd == "SET" && len(args) >= 3 {
+			storeMu.Lock()
 			replicaStore[args[1]] = args[2]
+			storeMu.Unlock()
 		}
+	}
+
+	getReplicaVal := func(k string) string {
+		storeMu.RLock()
+		defer storeMu.RUnlock()
+		return replicaStore[k]
 	}
 
 	replicaMgr := NewReplicationManager(7381, applyOnReplica, nil)
@@ -88,13 +98,13 @@ func TestReplicationLifecycleAndSync(t *testing.T) {
 	// 4. Wait for full sync to establish
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if replicaMgr.syncState == "online" && replicaStore["init:1"] == "alpha" {
+		if replicaMgr.GetSyncState() == "online" && getReplicaVal("init:1") == "alpha" {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	if replicaStore["init:1"] != "alpha" {
+	if getReplicaVal("init:1") != "alpha" {
 		t.Fatalf("Expected replica to receive initial dumped key 'init:1'='alpha', got: %v", replicaStore)
 	}
 
@@ -103,13 +113,13 @@ func TestReplicationLifecycleAndSync(t *testing.T) {
 
 	deadline = time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		if replicaStore["live:key"] == "stream_success" {
+		if getReplicaVal("live:key") == "stream_success" {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	if replicaStore["live:key"] != "stream_success" {
+	if getReplicaVal("live:key") != "stream_success" {
 		t.Fatalf("Expected replica to receive live streamed key 'live:key', got: %v", replicaStore)
 	}
 
