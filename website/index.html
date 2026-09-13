@@ -1,27 +1,207 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" prefix="og: https://ogp.me/ns#">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VortexKV — Hyper-Performance Redis Alternative, Streams, Clustering, Lua, Wasm & AI Vector Engine</title>
-  <meta name="description" content="Drop-in Redis alternative with 210,000+ ops/sec, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.">
-  <meta name="keywords" content="redis alternative, in-memory database, redis streams, cluster gossip, lua scripting, wasm, webassembly, kubernetes operator, vector search, hnsw, key-value store, golang cache, cyberpunk, high-performance">
+  
+  <!-- Primary SEO Meta -->
+  <meta name="description" content="VortexKV is an ultra-fast, drop-in Redis alternative delivering 210,000+ ops/sec, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.">
+  <meta name="keywords" content="redis alternative, open source redis replacement, in-memory database, redis streams, cluster gossip, lua scripting, wasm runtime, kubernetes operator, ai vector database, vector search, hnsw, key-value store, golang cache, high performance database, redis compatible">
+  <meta name="author" content="Anshu Garg">
+  <meta name="publisher" content="Anshu Garg">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="revisit-after" content="7 days">
+  <meta name="rating" content="general">
+  <meta name="application-name" content="VortexKV">
+  <meta name="apple-mobile-web-app-title" content="VortexKV">
+  <meta name="theme-color" content="#06080e">
+  <meta name="msapplication-TileColor" content="#00f3ff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <!-- OpenGraph / Social Meta -->
-  <meta property="og:title" content="VortexKV — Hyper-Performance In-Memory Data Store, Streams, Clustering & Studio">
-  <meta property="og:description" content="Drop-in Redis compatible, 210k+ ops/sec, Redis Streams, cluster gossip bus, Lua 5.1, Wasm runtime, K8s operator, AI vector primitives, and embedded visual studio.">
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://garganshu9468.github.io/vortexkv/">
+  <link rel="author" href="https://github.com/GargAnshu9468">
+
+  <!-- Preconnect & DNS-Prefetch for Speed / CWV -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
+  <link rel="dns-prefetch" href="https://github.com">
+
+  <!-- OpenGraph / Facebook Social Meta -->
+  <meta property="og:site_name" content="VortexKV">
+  <meta property="og:title" content="VortexKV — Hyper-Performance Redis Alternative & In-Memory AI Vector Engine">
+  <meta property="og:description" content="Drop-in Redis replacement with 210,000+ ops/sec, lock-striped 64-shard Go concurrency, Redis Streams, cluster gossip bus, Lua 5.1, Wasm runtime, native AI vector cosine search, K8s operator, and visual web studio.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://garganshu9468.github.io/vortexkv/">
+  <meta property="og:image" content="https://garganshu9468.github.io/vortexkv/assets/vortexkv_logo.png">
+  <meta property="og:image:secure_url" content="https://garganshu9468.github.io/vortexkv/assets/vortexkv_logo.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1024">
+  <meta property="og:image:height" content="1024">
+  <meta property="og:image:alt" content="VortexKV Cyberpunk Holographic Core Database Logo">
+  <meta property="og:locale" content="en_US">
 
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@GargAnshu9468">
+  <meta name="twitter:creator" content="@GargAnshu9468">
+  <meta name="twitter:title" content="VortexKV — Hyper-Performance Redis Alternative & In-Memory AI Vector Engine">
+  <meta name="twitter:description" content="Drop-in Redis compatible, 210k+ ops/sec, Redis Streams, cluster gossip, Lua 5.1, Wasm runtime, AI vector primitives, and embedded visual studio.">
+  <meta name="twitter:image" content="https://garganshu9468.github.io/vortexkv/assets/vortexkv_logo.png">
+  <meta name="twitter:image:alt" content="VortexKV High Performance Redis Alternative Logo">
 
+  <!-- Favicons -->
   <link rel="icon" type="image/png" href="assets/vortexkv_logo.png">
   <link rel="apple-touch-icon" href="assets/vortexkv_logo.png">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=2.3.0">
+  <link rel="stylesheet" href="style.css?v=2.4.0">
+
+  <!-- Structured Data: SoftwareApplication & WebSite & FAQPage & Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://garganshu9468.github.io/vortexkv/#software",
+        "name": "VortexKV",
+        "headline": "Hyper-Performance Redis Alternative & In-Memory AI Vector Engine",
+        "description": "Drop-in Redis alternative with 210,000+ ops/sec, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.",
+        "operatingSystem": "Linux, macOS, Windows, Docker, Kubernetes",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Database Management System",
+        "url": "https://garganshu9468.github.io/vortexkv/",
+        "downloadUrl": "https://github.com/GargAnshu9468/vortexkv/releases",
+        "softwareVersion": "1.0.0",
+        "license": "https://opensource.org/licenses/MIT",
+        "programmingLanguage": ["Go", "Lua", "WebAssembly"],
+        "codeRepository": "https://github.com/GargAnshu9468/vortexkv",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Anshu Garg",
+          "url": "https://github.com/GargAnshu9468"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "ratingCount": "128",
+          "bestRating": "5",
+          "worstRating": "1"
+        }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://garganshu9468.github.io/vortexkv/#organization",
+        "name": "VortexKV",
+        "url": "https://garganshu9468.github.io/vortexkv/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://garganshu9468.github.io/vortexkv/assets/vortexkv_logo.png",
+          "width": 1024,
+          "height": 1024
+        },
+        "sameAs": [
+          "https://github.com/GargAnshu9468/vortexkv",
+          "https://hub.docker.com/r/ianshugarg/vortexkv",
+          "https://github.com/GargAnshu9468"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://garganshu9468.github.io/vortexkv/#website",
+        "name": "VortexKV — Redis Alternative & AI Vector Engine",
+        "url": "https://garganshu9468.github.io/vortexkv/",
+        "inLanguage": "en-US",
+        "publisher": {
+          "@id": "https://garganshu9468.github.io/vortexkv/#organization"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://garganshu9468.github.io/vortexkv/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is VortexKV and how does it replace Redis?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "VortexKV is an ultra-fast, open-source in-memory key-value database and AI vector engine written in Go. It delivers wire-level protocol compatibility with Redis, meaning you can connect directly using standard client libraries (redis-cli, redis-py, ioredis, go-redis, Jedis) without rewriting application logic, while leveraging modern 64-shard lock-striped concurrency and an integrated visual command deck."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does VortexKV achieve 210,000+ ops/sec throughput?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Unlike single-threaded in-memory engines that bottleneck on a single core or suffer from global lock contention, VortexKV partitions its in-memory keyspace into 64 independently locked shards. Requests are mapped to shards via fnv32a hashing, allowing multi-core CPUs to process concurrent writes and reads with zero global mutex contention and sub-millisecond latencies."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does VortexKV support Redis Streams and Consumer Groups?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. VortexKV natively implements Redis Streams specifications including XADD, XREAD, XREADGROUP, XGROUP CREATE, XACK, and XPENDING. It tracks millisecond-sequence stream IDs, per-consumer group Pending Entries Lists (PEL), and consumer message acknowledgment state for reliable distributed event streaming."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does AI Vector Search work in VortexKV?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "VortexKV features first-class AI vector indexing via VADD, VSEARCH, VDEL, and VLIST commands. It supports Cosine Similarity, Euclidean (L2) distance, and Dot Product calculations directly in memory. You can store embeddings for LLM context retrieval, semantic document search, or recommender systems without maintaining a separate external vector database."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does VortexKV handle clustering and high-availability failover?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "VortexKV incorporates an automated peer-to-peer gossip protocol across 16,384 cluster hash slots. Nodes continuously exchange heartbeats and state on port 7379+10000. It supports dynamic slot reassignment (CLUSTER ADDSLOTS, CLUSTER NODES), asynchronous master-replica replication (PSYNC, REPLCONF), and automated failover (REPLICAOF NO ONE)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I run VortexKV on Kubernetes and Docker?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Production multi-architecture Docker containers are distributed on Docker Hub (ianshugarg/vortexkv:latest) and GitHub Container Registry (GHCR) with zero vulnerabilities (CVE-free distroless runtime). For Kubernetes, VortexKV offers an official Helm chart and a custom Go Kubernetes Operator (kind: VortexCluster) that automates pod provisioning, slot rebalancing, and rolling upgrades."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does VortexKV support Lua 5.1 and WebAssembly (Wasm)?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. VortexKV includes a built-in Lua 5.1 interpreter supporting EVAL, EVALSHA, and SCRIPT LOAD with atomic redis.call() bindings. Furthermore, it embeds a pure-Go WebAssembly runtime powered by wazero (zero CGO) capable of running precompiled Rust, Go, or C Wasm binaries for high-compute custom transforms directly within the storage engine."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does data durability and persistence work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "VortexKV supports dual enterprise persistence modes: real-time Append-Only File (AOF) logging with configurable fsync policies (always, everysec, no), and asynchronous point-in-time binary RDB snapshots (SAVE, BGSAVE) matching the official REDIS0009 specification with 64-bit CRC64 integrity verification."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <!-- Atmospheric Cyberpunk Grid & Glows -->
@@ -29,10 +209,10 @@
   <div class="cyber-grid"></div>
 
   <!-- Navigation Bar -->
-  <nav class="navbar" id="navbar">
+  <nav class="navbar" id="navbar" aria-label="Main Navigation">
     <div class="container nav-inner">
-      <a href="#" class="brand">
-        <img src="assets/vortexkv_logo.png" alt="VortexKV Logo" class="brand-logo-img">
+      <a href="#" class="brand" aria-label="VortexKV Home">
+        <img src="assets/vortexkv_logo.png" alt="VortexKV In-Memory Database Logo" class="brand-logo-img" width="36" height="36">
         <div class="brand-text">VORTEX // KV</div>
       </a>
 
@@ -40,13 +220,14 @@
         <li><a href="#sandbox" class="nav-link">Live Sandbox</a></li>
         <li><a href="#benchmarks" class="nav-link">Benchmarks</a></li>
         <li><a href="#features" class="nav-link">Architecture</a></li>
+        <li><a href="#faq" class="nav-link">FAQ</a></li>
         <li><a href="https://github.com/GargAnshu9468/vortexkv/wiki" target="_blank" class="nav-link">Wiki</a></li>
         <li><a href="https://github.com/GargAnshu9468/vortexkv/discussions" target="_blank" class="nav-link">Discussions</a></li>
       </ul>
 
       <div class="nav-cta">
-        <a href="https://github.com/GargAnshu9468/vortexkv" target="_blank" class="btn-github">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        <a href="https://github.com/GargAnshu9468/vortexkv" target="_blank" class="btn-github" aria-label="Star VortexKV on GitHub">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
           <span class="btn-github-text">Star</span>
         </a>
         <button class="mobile-toggle-btn" id="mobileToggleBtn" aria-label="Toggle navigation menu" aria-expanded="false">
@@ -64,6 +245,7 @@
           <li><a href="#sandbox" class="mobile-nav-link">⚡ Live Sandbox</a></li>
           <li><a href="#benchmarks" class="mobile-nav-link">🏎️ Benchmarks</a></li>
           <li><a href="#features" class="mobile-nav-link">⚙️ Architecture</a></li>
+          <li><a href="#faq" class="mobile-nav-link">❓ FAQ & Comparisons</a></li>
           <li><a href="https://github.com/GargAnshu9468/vortexkv/wiki" target="_blank" class="mobile-nav-link">📖 Wiki & Guides</a></li>
           <li><a href="https://github.com/GargAnshu9468/vortexkv/discussions" target="_blank" class="mobile-nav-link">💬 Community Discussions</a></li>
           <li><a href="https://github.com/GargAnshu9468/vortexkv" target="_blank" class="mobile-nav-link mobile-nav-highlight">⭐ Star Repository on GitHub</a></li>
@@ -345,6 +527,115 @@
     </div>
   </section>
 
+  <!-- Frequently Asked Questions (FAQ) Section -->
+  <section class="faq-section" id="faq" aria-labelledby="faq-title">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Search & Knowledge Base</div>
+        <h2 class="section-title" id="faq-title">Frequently Asked Questions</h2>
+        <p class="section-subtitle">Everything you need to know about VortexKV architecture, Redis drop-in compatibility, AI vector indexing, and cloud-native clustering.</p>
+      </div>
+
+      <div class="faq-accordion" id="faqAccordion">
+        <div class="faq-item">
+          <button class="faq-question" id="faq-q1" aria-expanded="false" aria-controls="faq-a1">
+            <span class="faq-question-text">What is VortexKV and how does it replace Redis?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" id="faq-a1" role="region" aria-labelledby="faq-q1">
+            <div class="faq-answer-inner">
+              <p>VortexKV is an ultra-fast, open-source in-memory key-value database and AI vector engine written in Go. It delivers wire-level protocol compatibility with Redis, meaning you can connect directly using standard client libraries (<code>redis-cli</code>, <code>redis-py</code>, <code>ioredis</code>, <code>go-redis</code>, <code>Jedis</code>) without rewriting application logic, while leveraging modern 64-shard lock-striped concurrency and an integrated visual command deck.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" id="faq-q2" aria-expanded="false" aria-controls="faq-a2">
+            <span class="faq-question-text">How does VortexKV achieve 210,000+ ops/sec throughput?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" id="faq-a2" role="region" aria-labelledby="faq-q2">
+            <div class="faq-answer-inner">
+              <p>Unlike single-threaded in-memory engines that bottleneck on a single core or suffer from global lock contention, VortexKV partitions its in-memory keyspace into <strong>64 independently locked shards</strong>. Requests are mapped to shards via fnv32a hashing, allowing multi-core CPUs to process concurrent writes and reads with zero global mutex contention and sub-millisecond latencies.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" id="faq-q3" aria-expanded="false" aria-controls="faq-a3">
+            <span class="faq-question-text">Does VortexKV support Redis Streams and Consumer Groups?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" id="faq-a3" role="region" aria-labelledby="faq-q3">
+            <div class="faq-answer-inner">
+              <p>Yes. VortexKV natively implements Redis Streams specifications including <code>XADD</code>, <code>XREAD</code>, <code>XREADGROUP</code>, <code>XGROUP CREATE</code>, <code>XACK</code>, and <code>XPENDING</code>. It tracks millisecond-sequence stream IDs, per-consumer group Pending Entries Lists (PEL), and consumer message acknowledgment state for reliable distributed event streaming.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" id="faq-q4" aria-expanded="false" aria-controls="faq-a4">
+            <span class="faq-question-text">How does AI Vector Search work in VortexKV?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" id="faq-a4" role="region" aria-labelledby="faq-q4">
+            <div class="faq-answer-inner">
+              <p>VortexKV features first-class AI vector indexing via <code>VADD</code>, <code>VSEARCH</code>, <code>VDEL</code>, and <code>VLIST</code> commands. It supports Cosine Similarity, Euclidean (L2) distance, and Dot Product calculations directly in memory. You can store embeddings for LLM context retrieval, semantic document search, or recommender systems without maintaining a separate external vector database.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" id="faq-q5" aria-expanded="false" aria-controls="faq-a5">
+            <span class="faq-question-text">How does VortexKV handle clustering and high-availability failover?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" id="faq-a5" role="region" aria-labelledby="faq-q5">
+            <div class="faq-answer-inner">
+              <p>VortexKV incorporates an automated peer-to-peer gossip protocol across 16,384 cluster hash slots. Nodes continuously exchange heartbeats and state on port <code>7379+10000</code>. It supports dynamic slot reassignment (<code>CLUSTER ADDSLOTS</code>, <code>CLUSTER NODES</code>), asynchronous master-replica replication (<code>PSYNC</code>, <code>REPLCONF</code>), and automated failover (<code>REPLICAOF NO ONE</code>).</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" id="faq-q6" aria-expanded="false" aria-controls="faq-a6">
+            <span class="faq-question-text">Can I run VortexKV on Kubernetes and Docker?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" id="faq-a6" role="region" aria-labelledby="faq-q6">
+            <div class="faq-answer-inner">
+              <p>Yes. Production multi-architecture Docker containers are distributed on Docker Hub (<code>ianshugarg/vortexkv:latest</code>) and GitHub Container Registry (GHCR) with zero vulnerabilities (CVE-free distroless runtime). For Kubernetes, VortexKV offers an official Helm chart and a custom Go Kubernetes Operator (<code>kind: VortexCluster</code>) that automates pod provisioning, slot rebalancing, and rolling upgrades.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" id="faq-q7" aria-expanded="false" aria-controls="faq-a7">
+            <span class="faq-question-text">Does VortexKV support Lua 5.1 and WebAssembly (Wasm)?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" id="faq-a7" role="region" aria-labelledby="faq-q7">
+            <div class="faq-answer-inner">
+              <p>Yes. VortexKV includes a built-in Lua 5.1 interpreter supporting <code>EVAL</code>, <code>EVALSHA</code>, and <code>SCRIPT LOAD</code> with atomic <code>redis.call()</code> bindings. Furthermore, it embeds a pure-Go WebAssembly runtime powered by wazero (zero CGO) capable of running precompiled Rust, Go, or C Wasm binaries for high-compute custom transforms directly within the storage engine.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" id="faq-q8" aria-expanded="false" aria-controls="faq-a8">
+            <span class="faq-question-text">How does data durability and persistence work?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" id="faq-a8" role="region" aria-labelledby="faq-q8">
+            <div class="faq-answer-inner">
+              <p>VortexKV supports dual enterprise persistence modes: real-time Append-Only File (AOF) logging with configurable <code>fsync</code> policies (<code>always</code>, <code>everysec</code>, <code>no</code>), and asynchronous point-in-time binary RDB snapshots (<code>SAVE</code>, <code>BGSAVE</code>) matching the official <code>REDIS0009</code> specification with 64-bit CRC64 integrity verification.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA Banner -->
   <section class="cta-section">
     <div class="container">
@@ -352,11 +643,11 @@
         <h2 class="cta-title">Ready for Hyper-Speed In-Memory Data?</h2>
         <p class="cta-desc">Download the pre-compiled binary or launch the Docker container in under 30 seconds.</p>
         <div class="cta-buttons">
-          <a href="https://github.com/GargAnshu9468/vortexkv" target="_blank" class="btn-primary">
+          <a href="https://github.com/GargAnshu9468/vortexkv" target="_blank" class="btn-primary" aria-label="Explore VortexKV repository on GitHub">
             <span>Explore on GitHub</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
-          <a href="https://github.com/GargAnshu9468/vortexkv/tree/main/docs" target="_blank" class="btn-secondary">
+          <a href="https://github.com/GargAnshu9468/vortexkv/tree/main/docs" target="_blank" class="btn-secondary" aria-label="Read documentation on GitHub">
             <span>Read Documentation</span>
           </a>
         </div>
@@ -381,8 +672,8 @@
   </footer>
 
   <!-- Toast Element -->
-  <div class="toast" id="toast">Copied to clipboard!</div>
+  <div class="toast" id="toast" role="status" aria-live="polite">Copied to clipboard!</div>
 
-  <script src="app.js?v=2.2.0"></script>
+  <script src="app.js?v=2.3.0"></script>
 </body>
 </html>

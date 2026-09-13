@@ -565,5 +565,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // FAQ Accordion Interaction with Accessibility
+  const faqQuestions = document.querySelectorAll(".faq-question");
+  faqQuestions.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const item = btn.closest(".faq-item");
+      if (!item) return;
+      const isOpen = item.classList.toggle("open");
+      btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  });
 });
+
 

@@ -1,0 +1,8 @@
+# Robots.txt for VortexKV
+# https://garganshu9468.github.io/vortexkv/
+
+User-agent: *
+Allow: /
+
+# Sitemap index
+Sitemap: https://garganshu9468.github.io/vortexkv/sitemap.xml
