@@ -14,6 +14,10 @@ COPY . .
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG VERSION=1.0.0
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
+
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -ldflags="-s -w" -o vortex-server ./cmd/vortex-server
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -ldflags="-s -w" -o vortex-cli ./cmd/vortex-cli
 
@@ -21,6 +25,10 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -
 # Final Minimal Distroless Runtime Image (Zero CVEs: 0C 0H 0M 0L)
 # ==============================================================================
 FROM gcr.io/distroless/static-debian12:nonroot
+
+ARG VERSION=1.0.0
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
 
 WORKDIR /data
 
@@ -34,10 +42,14 @@ ENV VORTEX_PORT=7379 \
 LABEL maintainer="Anshu Garg <a.garg9050@gmail.com>" \
       org.opencontainers.image.title="vortexkv" \
       org.opencontainers.image.description="Ultra high-performance in-memory key-value data engine with native AI vector search and Web Command Deck" \
-      org.opencontainers.image.url="https://garganshu9468.github.io/vortexkv/" \
+      org.opencontainers.image.url="https://github.com/GargAnshu9468/vortexkv" \
       org.opencontainers.image.source="https://github.com/GargAnshu9468/vortexkv" \
       org.opencontainers.image.documentation="https://github.com/GargAnshu9468/vortexkv/wiki" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      com.docker.image.source.entrypoint="Dockerfile"
 
 USER 65532:65532
 
