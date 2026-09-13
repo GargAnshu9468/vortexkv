@@ -125,6 +125,15 @@ body {
   box-shadow: 0 0 16px var(--cyan-glow);
 }
 
+.brand-logo-img {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  box-shadow: 0 0 16px var(--cyan-glow);
+  border: 1px solid rgba(0, 243, 255, 0.4);
+}
+
 .brand-text {
   font-family: var(--font-mono);
   font-weight: 800;
