@@ -75,3 +75,13 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub Description & Overview
+        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ steps.image-names.outputs.hub }}
+          short-description: "Ultra high-performance in-memory KV engine with native vector search & cyberpunk visual studio."
+          readme-filepath: ./DOCKER_README.md
