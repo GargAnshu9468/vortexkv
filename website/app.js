@@ -482,7 +482,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Installer Tabs
   const installCommands = {
     curl: "curl -fsSL https://raw.githubusercontent.com/GargAnshu9468/vortexkv/main/install.sh | bash",
-    docker: "docker run -d -p 7379:7379 -p 7380:7380 vortexkv/vortex:latest",
+    docker: "docker run -d -p 7379:7379 -p 7380:7380 ianshugarg/vortexkv:latest",
     helm: "helm install vortexkv ./deployments/helm/vortexkv",
     operator: "kubectl apply -f deployments/operator/crd.yaml && kubectl apply -f deployments/operator/operator.yaml",
     brew: "brew install vortexkv/tap/vortexkv",
