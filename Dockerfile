@@ -33,6 +33,18 @@ WORKDIR /data
 COPY --from=builder /build/vortex-server /usr/local/bin/vortex-server
 COPY --from=builder /build/vortex-cli /usr/local/bin/vortex-cli
 
+ENV VORTEX_PORT=7379 \
+    VORTEX_WEB_PORT=7380 \
+    VORTEX_DATA_DIR=/data
+
+LABEL maintainer="Anshu Garg <a.garg9050@gmail.com>" \
+      org.opencontainers.image.title="vortexkv" \
+      org.opencontainers.image.description="Ultra high-performance in-memory key-value data engine with native AI vector search and Web Command Deck" \
+      org.opencontainers.image.url="https://garganshu9468.github.io/vortexkv/" \
+      org.opencontainers.image.source="https://github.com/GargAnshu9468/vortexkv" \
+      org.opencontainers.image.documentation="https://github.com/GargAnshu9468/vortexkv/wiki" \
+      org.opencontainers.image.licenses="MIT"
+
 USER vortex:vortex
 
 # Port 7379: VortexKV RESP Wire Protocol
