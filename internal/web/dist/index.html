@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VORTEX // KV — Next-Gen In-Memory Command Deck</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,800;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -82,24 +84,17 @@
     .brand-logo {
       width: 38px;
       height: 38px;
-      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
       border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      object-fit: cover;
+      display: block;
       box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
       animation: pulseLogo 3s infinite alternate;
+      border: 1px solid rgba(0, 243, 255, 0.4);
     }
 
     @keyframes pulseLogo {
       0% { box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
       100% { box-shadow: 0 0 28px rgba(176, 38, 255, 0.6); }
-    }
-
-    .brand-logo svg {
-      width: 22px;
-      height: 22px;
-      fill: #fff;
     }
 
     .brand-title {
@@ -938,11 +933,7 @@
   <!-- Header -->
   <header class="header">
     <div class="brand-group">
-      <div class="brand-logo">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-        </svg>
-      </div>
+      <img src="/logo.png" alt="VortexKV Logo" class="brand-logo">
       <div>
         <div class="brand-title">
           VORTEX<span style="color:var(--neon-cyan)">KV</span>
