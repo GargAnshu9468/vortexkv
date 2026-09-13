@@ -29,4 +29,5 @@
 ---
 
 **[⭐ GitHub Repo](https://github.com/GargAnshu9468/vortexkv)**  
+**[💬 Community Discussions](https://github.com/GargAnshu9468/vortexkv/discussions)**  
 **[🌐 Live Sandbox](https://garganshu9468.github.io/vortexkv/)**

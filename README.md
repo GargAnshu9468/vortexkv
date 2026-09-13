@@ -4,6 +4,13 @@
 > Drop-in compatible with standard Redis clients, running on non-conflicting dedicated ports (**`7379`** for wire protocol & **`7380`** for Web Studio).
 
 <p align="center">
+  <a href="https://github.com/GargAnshu9468/vortexkv/discussions"><img src="https://img.shields.io/badge/Discussions-Join_Community-cyan?logo=github&style=flat-square" alt="GitHub Discussions"></a>
+  <a href="https://github.com/GargAnshu9468/vortexkv/wiki"><img src="https://img.shields.io/badge/Wiki-Documentation-blue?logo=gitbook&style=flat-square" alt="Wiki Documentation"></a>
+  <a href="https://garganshu9468.github.io/vortexkv/"><img src="https://img.shields.io/badge/Live_Demo-Interactive_Sandbox-00f3ff?style=flat-square" alt="Live Demo"></a>
+  <a href="https://github.com/GargAnshu9468/vortexkv/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
+</p>
+
+<p align="center">
   <img src="./docs/assets/vortexkv_demo.gif" alt="VortexKV Cyberpunk Web Studio Demo" width="900" style="border-radius: 10px; border: 1px solid rgba(0, 243, 255, 0.2);">
 </p>
 
