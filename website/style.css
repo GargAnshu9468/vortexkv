@@ -183,6 +183,106 @@ body {
   color: #fff;
 }
 
+/* Mobile Toggle Hamburger Button */
+.mobile-toggle-btn {
+  display: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 243, 255, 0.25);
+  border-radius: var(--radius-sm);
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0;
+  transition: var(--transition);
+}
+
+.mobile-toggle-btn:hover, .mobile-toggle-btn:focus-visible {
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan-glow);
+  outline: none;
+}
+
+.mobile-toggle-btn .bar {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text-main);
+  border-radius: 2px;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, background 0.2s ease;
+}
+
+.mobile-toggle-btn.active .bar-1 {
+  transform: translateY(7px) rotate(45deg);
+  background: var(--cyan);
+}
+
+.mobile-toggle-btn.active .bar-2 {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.mobile-toggle-btn.active .bar-3 {
+  transform: translateY(-7px) rotate(-45deg);
+  background: var(--cyan);
+}
+
+/* Mobile Navigation Drawer */
+.mobile-nav-drawer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+  opacity: 0;
+  background: rgba(4, 7, 17, 0.98);
+  border-bottom: 1px solid rgba(0, 243, 255, 0.25);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.mobile-nav-drawer.open {
+  max-height: 480px;
+  opacity: 1;
+}
+
+.mobile-nav-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0 24px;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--text-main);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+  transition: var(--transition);
+}
+
+.mobile-nav-link:hover, .mobile-nav-link:active {
+  background: rgba(0, 243, 255, 0.12);
+  border-color: rgba(0, 243, 255, 0.4);
+  color: var(--cyan);
+  transform: translateX(4px);
+}
+
+.mobile-nav-highlight {
+  background: linear-gradient(90deg, rgba(0, 243, 255, 0.15), rgba(138, 43, 226, 0.15));
+  border-color: rgba(0, 243, 255, 0.4);
+  color: var(--cyan);
+}
+
 /* Hero Section */
 .hero {
   padding: 100px 0 60px;
@@ -282,21 +382,39 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 16px 20px;
   font-family: var(--font-mono);
   font-size: 0.95rem;
   color: #fff;
   background: #050a17;
+  overflow: hidden;
+}
+
+.code-scroll-wrap {
+  min-width: 0;
+  flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  display: flex;
+  align-items: center;
+}
+
+.code-scroll-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .inst-prompt {
   color: var(--cyan);
   margin-right: 12px;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .copy-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   background: rgba(255, 255, 255, 0.08);
@@ -307,6 +425,7 @@ body {
   font-family: var(--font-mono);
   font-size: 0.8rem;
   cursor: pointer;
+  flex-shrink: 0;
   transition: var(--transition);
 }
 
@@ -787,12 +906,227 @@ body {
   opacity: 1;
 }
 
-/* Responsive Media Queries */
+/* ==============================================================================
+   📱 High-Velocity Responsive Media Queries (Tablets, Phablets, Smartphones)
+   ============================================================================== */
+
+/* 1. Large Tablets & Small Laptops (<= 1024px) */
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 20px;
+  }
+  .features-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+}
+
+/* 2. Tablets & Medium Screens (<= 860px) */
+@media (max-width: 860px) {
+  .nav-links {
+    display: none;
+  }
+  .mobile-toggle-btn {
+    display: inline-flex;
+  }
+  .hero-title {
+    font-size: clamp(2.2rem, 5.5vw, 3.4rem);
+  }
+  .benchmarks-grid {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+  }
+}
+
+/* 3. Small Tablets & Mobile Devices (<= 768px) */
 @media (max-width: 768px) {
-  .nav-links { display: none; }
-  .installer-code-row { font-size: 0.82rem; }
-  .term-body { padding: 16px; min-height: 320px; }
-  .benchmarks-grid { grid-template-columns: 1fr; }
-  .features-grid { grid-template-columns: 1fr; }
-  .cta-box { padding: 40px 20px; }
+  .hero {
+    padding: 64px 0 40px;
+  }
+  .badge-pill {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.4;
+    padding: 6px 12px;
+    font-size: 0.76rem;
+  }
+  .hero-subtitle {
+    font-size: 1.05rem;
+    margin-bottom: 28px;
+    padding: 0 8px;
+  }
+  
+  /* Quick Installer Box */
+  .installer-box {
+    margin-bottom: 36px;
+    border-radius: var(--radius-sm);
+  }
+  .installer-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px;
+    gap: 4px;
+  }
+  .installer-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .inst-tab {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+  .installer-code-row {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+  .code-scroll-wrap {
+    font-size: 0.82rem;
+  }
+  .copy-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+
+  /* Terminal Sandbox */
+  .sandbox-section {
+    padding: 50px 0;
+  }
+  .section-header {
+    margin-bottom: 32px;
+  }
+  .section-title {
+    font-size: clamp(1.65rem, 5vw, 2.2rem);
+  }
+  .section-desc {
+    font-size: 0.95rem;
+    padding: 0 8px;
+  }
+  .term-topbar {
+    padding: 10px 14px;
+  }
+  .term-title {
+    display: none;
+  }
+  .term-body {
+    padding: 16px 14px;
+    min-height: 280px;
+    max-height: 380px;
+    font-size: 0.85rem;
+  }
+  .term-input {
+    font-size: 16px !important; /* Prevents auto-zoom in mobile Safari */
+  }
+  .sandbox-presets {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .preset-chip {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    min-height: 34px;
+  }
+
+  /* Benchmarks & Features */
+  .benchmarks-section,
+  .features-section {
+    padding: 50px 0;
+  }
+  .bench-card {
+    padding: 20px 16px;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .feature-card {
+    padding: 24px 20px;
+  }
+  .feature-icon {
+    font-size: 28px;
+    margin-bottom: 14px;
+  }
+
+  /* CTA Box */
+  .cta-section {
+    padding: 60px 0;
+  }
+  .cta-box {
+    padding: 40px 20px;
+    border-radius: var(--radius-md);
+  }
+  .cta-title {
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+  }
+  .cta-desc {
+    font-size: 1rem;
+    margin-bottom: 28px;
+  }
+  .cta-buttons {
+    flex-direction: column;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    justify-content: center;
+    padding: 13px 20px;
+  }
+
+  /* Footer */
+  .footer {
+    padding: 40px 0 24px;
+  }
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+  }
+}
+
+/* 4. Ultra-Compact Smartphones (<= 480px) */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 14px;
+  }
+  .nav-inner {
+    height: 60px;
+  }
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+  .brand-text {
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+  }
+  .btn-github {
+    padding: 7px 10px;
+  }
+  .btn-github span {
+    display: none; /* Hide text on small screens, keep GitHub icon */
+  }
+  .hero-title {
+    font-size: clamp(1.75rem, 7.5vw, 2.3rem);
+    line-height: 1.18;
+  }
+  .code-scroll-wrap {
+    font-size: 0.78rem;
+  }
+  .toast {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    text-align: center;
+    font-size: 0.8rem;
+  }
 }

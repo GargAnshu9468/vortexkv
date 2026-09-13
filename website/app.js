@@ -524,4 +524,46 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   });
+
+  // Mobile Navigation Drawer Toggle
+  const mobileToggleBtn = document.getElementById("mobileToggleBtn");
+  const mobileNavDrawer = document.getElementById("mobileNavDrawer");
+  const mobileNavLinks = document.querySelectorAll(".mobile-nav-link");
+
+  if (mobileToggleBtn && mobileNavDrawer) {
+    mobileToggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = mobileNavDrawer.classList.toggle("open");
+      mobileToggleBtn.classList.toggle("active", isOpen);
+      mobileToggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+
+    // Close when clicking any link inside drawer
+    mobileNavLinks.forEach(link => {
+      link.addEventListener("click", () => {
+        mobileNavDrawer.classList.remove("open");
+        mobileToggleBtn.classList.remove("active");
+        mobileToggleBtn.setAttribute("aria-expanded", "false");
+      });
+    });
+
+    // Close when clicking outside drawer
+    document.addEventListener("click", (e) => {
+      if (!mobileNavDrawer.contains(e.target) && !mobileToggleBtn.contains(e.target)) {
+        mobileNavDrawer.classList.remove("open");
+        mobileToggleBtn.classList.remove("active");
+        mobileToggleBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    // Close on Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && mobileNavDrawer.classList.contains("open")) {
+        mobileNavDrawer.classList.remove("open");
+        mobileToggleBtn.classList.remove("active");
+        mobileToggleBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
 });
+
