@@ -14,6 +14,7 @@
 | **🌊 Streams & Consumer Groups** | Event streaming, Pending Entries List (PEL), and worker pools | [[Streams-and-Consumer-Groups]] |
 | **📡 Cluster & Gossip Protocol** | 16,384 hash slots, Port 17379 binary bus, autonomous failover | [[Cluster-and-Gossip-Protocol]] |
 | **⚖️ Cluster Slot Rebalancer** | CLI automation for live online slot and key migrations | [[Cluster-Rebalancing]] |
+| **🔁 Replication & Failover** | Master-Replica async replication, PSYNC handshake, instant failover | [[Replication-and-Failover]] |
 | **📜 Scripting Engines** | Embedded Lua 5.1 & WebAssembly (Wasm) runtime via Wazero | [[Scripting-Lua-and-Wasm]] |
 | **☸️ Kubernetes Operator** | Declarative CRD (`kind: VortexCluster`) and auto-scaling | [[Kubernetes-Operator]] |
 | **💾 Persistence & Durability** | Binary RDB snapshots with CRC64 & durable Append-Only File (AOF) | [[Persistence-and-Durability]] |
