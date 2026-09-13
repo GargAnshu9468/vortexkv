@@ -41,13 +41,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Determine Docker Hub repo
-        id: hub-repo
+      - name: Prepare Image Names
+        id: image-names
         run: |
+          GHCR_IMAGE="ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')"
+          echo "ghcr=$GHCR_IMAGE" >> $GITHUB_OUTPUT
           if [ -n "$DOCKERHUB_USERNAME" ]; then
-            echo "repo=$DOCKERHUB_USERNAME/vortexkv" >> $GITHUB_OUTPUT
+            HUB_USER=$(echo "$DOCKERHUB_USERNAME" | tr '[:upper:]' '[:lower:]')
+            echo "hub=${HUB_USER}/vortexkv" >> $GITHUB_OUTPUT
           else
-            echo "repo=" >> $GITHUB_OUTPUT
+            echo "hub=" >> $GITHUB_OUTPUT
           fi
 
       - name: Extract Metadata (tags, labels)
@@ -55,8 +58,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository }}
-            ${{ steps.hub-repo.outputs.repo }}
+            ${{ steps.image-names.outputs.ghcr }}
+            ${{ steps.image-names.outputs.hub }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}}
