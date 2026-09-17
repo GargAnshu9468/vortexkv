@@ -85,10 +85,13 @@ func (s *TCPServer) acceptLoop() {
 			continue
 		}
 
-		// Set TCP keep-alive
+		// Set TCP keep-alive and high-velocity buffer tuning
 		if tcpConn, ok := conn.(*net.TCPConn); ok {
+			_ = tcpConn.SetNoDelay(true)
 			_ = tcpConn.SetKeepAlive(true)
 			_ = tcpConn.SetKeepAlivePeriod(30 * time.Second)
+			_ = tcpConn.SetReadBuffer(128 * 1024)
+			_ = tcpConn.SetWriteBuffer(128 * 1024)
 		}
 
 		connID := fmt.Sprintf("client-%d", s.connCount.Add(1))
@@ -107,6 +110,7 @@ func (s *TCPServer) handleConnection(connID string, conn net.Conn) {
 
 	reader := resp.NewReader(conn)
 	writer := resp.NewWriter(conn)
+	session := s.engine.GetClientSession(connID)
 
 	// Per-connection pubsub state
 	var subChans []string
@@ -135,7 +139,7 @@ func (s *TCPServer) handleConnection(connID string, conn net.Conn) {
 			continue
 		}
 
-		cmdUpper := strings.ToUpper(args[0])
+		cmdUpper := engine.ToUpperFast(args[0])
 
 		// Handle QUIT command
 		if cmdUpper == "QUIT" {
@@ -153,7 +157,6 @@ func (s *TCPServer) handleConnection(connID string, conn net.Conn) {
 
 		// Handle PSYNC / SYNC replication handshake
 		if cmdUpper == "PSYNC" || cmdUpper == "SYNC" {
-			session := s.engine.GetClientSession(connID)
 			if s.engine.Password != "" && !session.Authenticated {
 				_ = writer.WriteError("NOAUTH Authentication required.")
 				_ = writer.Flush()
@@ -169,7 +172,6 @@ func (s *TCPServer) handleConnection(connID string, conn net.Conn) {
 		// Handle SUBSCRIBE
 		if cmdUpper == "SUBSCRIBE" {
 			// Check authentication first if password required
-			session := s.engine.GetClientSession(connID)
 			if s.engine.Password != "" && !session.Authenticated {
 				_ = writer.WriteError("NOAUTH Authentication required.")
 				_ = writer.Flush()
@@ -202,13 +204,17 @@ func (s *TCPServer) handleConnection(connID string, conn net.Conn) {
 			return
 		}
 
-		// Execute regular command
-		response := s.engine.ExecuteCommand(connID, args)
+		// Execute regular command with pre-bound session
+		response := s.engine.ExecuteCommandWithSession(session, connID, args)
 		if err := writer.WriteValue(response); err != nil {
 			return
 		}
-		if err := writer.Flush(); err != nil {
-			return
+
+		// Smart pipeline write coalescing: only flush when read buffer is empty
+		if reader.Buffered() == 0 {
+			if err := writer.Flush(); err != nil {
+				return
+			}
 		}
 	}
 }

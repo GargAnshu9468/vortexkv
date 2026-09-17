@@ -17,11 +17,26 @@ func NewWriter(w io.Writer) *Writer {
 	}
 }
 
+var (
+	respOK        = []byte("+OK\r\n")
+	respPONG      = []byte("+PONG\r\n")
+	respNull      = []byte("$-1\r\n")
+	respNullArray = []byte("*-1\r\n")
+	respZeroInt   = []byte(":0\r\n")
+	respOneInt    = []byte(":1\r\n")
+)
+
 func (w *Writer) Flush() error {
 	return w.writer.Flush()
 }
 
 func (w *Writer) WriteSimpleString(s string) error {
+	if s == "OK" {
+		return w.WriteOK()
+	}
+	if s == "PONG" {
+		return w.WritePong()
+	}
 	w.writer.WriteByte(SimpleStringPrefix)
 	w.writer.WriteString(s)
 	_, err := w.writer.Write(CRLF)
@@ -29,11 +44,13 @@ func (w *Writer) WriteSimpleString(s string) error {
 }
 
 func (w *Writer) WriteOK() error {
-	return w.WriteSimpleString("OK")
+	_, err := w.writer.Write(respOK)
+	return err
 }
 
 func (w *Writer) WritePong() error {
-	return w.WriteSimpleString("PONG")
+	_, err := w.writer.Write(respPONG)
+	return err
 }
 
 func (w *Writer) WriteError(msg string) error {
@@ -44,6 +61,14 @@ func (w *Writer) WriteError(msg string) error {
 }
 
 func (w *Writer) WriteInteger(n int64) error {
+	if n == 0 {
+		_, err := w.writer.Write(respZeroInt)
+		return err
+	}
+	if n == 1 {
+		_, err := w.writer.Write(respOneInt)
+		return err
+	}
 	w.writer.WriteByte(IntegerPrefix)
 	w.writer.WriteString(strconv.FormatInt(n, 10))
 	_, err := w.writer.Write(CRLF)
@@ -51,7 +76,12 @@ func (w *Writer) WriteInteger(n int64) error {
 }
 
 func (w *Writer) WriteBulkString(s string) error {
-	return w.WriteBulkBytes([]byte(s))
+	w.writer.WriteByte(BulkStringPrefix)
+	w.writer.WriteString(strconv.Itoa(len(s)))
+	w.writer.Write(CRLF)
+	w.writer.WriteString(s)
+	_, err := w.writer.Write(CRLF)
+	return err
 }
 
 func (w *Writer) WriteBulkBytes(b []byte) error {
@@ -67,12 +97,12 @@ func (w *Writer) WriteBulkBytes(b []byte) error {
 }
 
 func (w *Writer) WriteNull() error {
-	_, err := w.writer.WriteString("$-1\r\n")
+	_, err := w.writer.Write(respNull)
 	return err
 }
 
 func (w *Writer) WriteNullArray() error {
-	_, err := w.writer.WriteString("*-1\r\n")
+	_, err := w.writer.Write(respNullArray)
 	return err
 }
 

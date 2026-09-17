@@ -24,6 +24,11 @@ func NewReader(r io.Reader) *Reader {
 	}
 }
 
+// Buffered returns the number of bytes currently buffered and waiting to be read
+func (r *Reader) Buffered() int {
+	return r.reader.Buffered()
+}
+
 // ReadValue reads the next RESP value or inline command
 func (r *Reader) ReadValue() (Value, error) {
 	b, err := r.reader.ReadByte()

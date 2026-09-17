@@ -245,16 +245,35 @@ func (e *Engine) Close() error {
 	return nil
 }
 
+// ToUpperFast converts ASCII lowercase to uppercase without heap allocation if already uppercase
+func ToUpperFast(s string) string {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'a' && c <= 'z' {
+			return strings.ToUpper(s)
+		}
+	}
+	return s
+}
+
 // ExecuteCommand executes a command array and tracks metrics & AOF persistence
 func (e *Engine) ExecuteCommand(connID string, args []string) resp.Value {
+	session := e.GetClientSession(connID)
+	return e.ExecuteCommandWithSession(session, connID, args)
+}
+
+// ExecuteCommandWithSession executes a command with a pre-bound client session, bypassing global session lock contention
+func (e *Engine) ExecuteCommandWithSession(session *ClientSession, connID string, args []string) resp.Value {
 	if len(args) == 0 {
 		return resp.Error("ERR empty command")
 	}
 
 	start := time.Now()
-	cmdName := strings.ToUpper(args[0])
+	cmdName := ToUpperFast(args[0])
 
-	session := e.GetClientSession(connID)
+	if session == nil {
+		session = e.GetClientSession(connID)
+	}
 
 	// Authentication check
 	if e.Password != "" && !session.Authenticated && connID != "replica_stream" && connID != "aof_replay" && connID != "" {
@@ -460,6 +479,26 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 		return resp.BulkString(args[0]), false
 
 	case "COMMAND":
+		return resp.Array([]resp.Value{}), false
+
+	case "CONFIG":
+		if len(args) >= 2 && strings.ToUpper(args[0]) == "GET" {
+			param := strings.ToLower(args[1])
+			if param == "save" || param == "*" {
+				return resp.Array([]resp.Value{
+					resp.BulkString("save"),
+					resp.BulkString(""),
+				}), false
+			}
+			return resp.Array([]resp.Value{
+				resp.BulkString(param),
+				resp.BulkString(""),
+			}), false
+		} else if len(args) >= 2 && strings.ToUpper(args[0]) == "SET" {
+			return resp.SimpleString("OK"), false
+		} else if len(args) >= 1 && strings.ToUpper(args[0]) == "RESETSTAT" {
+			return resp.SimpleString("OK"), false
+		}
 		return resp.Array([]resp.Value{}), false
 
 	case "EVAL":

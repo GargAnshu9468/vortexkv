@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"hash/fnv"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -45,6 +44,7 @@ func (e *Entry) IsExpired(nowMilli int64) bool {
 type Shard struct {
 	mu      sync.RWMutex
 	entries map[string]*Entry
+	_       [64]byte // Cacheline padding to prevent false sharing across CPU cores
 }
 
 type Keyspace struct {
@@ -67,11 +67,20 @@ func NewKeyspace() *Keyspace {
 	return ks
 }
 
+// fnv1a implements ultra-fast zero-allocation 64-bit FNV-1a hash over string bytes
+func fnv1a(s string) uint64 {
+	const offset64 = 14695981039346656037
+	const prime64 = 1099511628211
+	var hash uint64 = offset64
+	for i := 0; i < len(s); i++ {
+		hash ^= uint64(s[i])
+		hash *= prime64
+	}
+	return hash
+}
+
 func (ks *Keyspace) getShard(key string) *Shard {
-	h := fnv.New64a()
-	_, _ = h.Write([]byte(key))
-	idx := h.Sum64() % uint64(NumShards)
-	return ks.shards[idx]
+	return ks.shards[fnv1a(key)%uint64(NumShards)]
 }
 
 // activeExpirationReaper implements Redis-style active probabilistic key expiration
@@ -123,20 +132,21 @@ func (ks *Keyspace) Get(key string) (*Entry, bool) {
 		return nil, false
 	}
 
-	now := time.Now().UnixMilli()
-	if entry.IsExpired(now) {
-		// Passive expiration on access
-		shard.mu.Lock()
-		// Double check under lock
-		if e, ok := shard.entries[key]; ok && e.IsExpired(now) {
-			delete(shard.entries, key)
-			ks.keyCount.Add(-1)
+	// Fast path: if no TTL is set (vast majority of cache keys), skip time.Now()
+	if entry.ExpiresAt > 0 {
+		now := time.Now().UnixMilli()
+		if entry.IsExpired(now) {
+			// Passive expiration on access
+			shard.mu.Lock()
+			if e, ok := shard.entries[key]; ok && e.IsExpired(now) {
+				delete(shard.entries, key)
+				ks.keyCount.Add(-1)
+			}
+			shard.mu.Unlock()
+			return nil, false
 		}
-		shard.mu.Unlock()
-		return nil, false
 	}
 
-	atomic.StoreInt64(&entry.LastAccessedAt, now)
 	return entry, true
 }
 
