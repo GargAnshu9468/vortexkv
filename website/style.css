@@ -714,6 +714,303 @@ body {
   background: #3b4860;
 }
 
+/* Reproduce Box */
+.reproduce-box {
+  max-width: 1060px;
+  margin: 32px auto 0;
+  background: rgba(10, 15, 29, 0.7);
+  border: 1px dashed rgba(0, 243, 255, 0.35);
+  border-radius: var(--radius-md);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.reproduce-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reproduce-tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--cyan);
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.reproduce-text {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.reproduce-cmd-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #080c14;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+}
+
+.reproduce-code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: #79c0ff;
+  white-space: nowrap;
+}
+
+.reproduce-copy-btn {
+  background: rgba(0, 243, 255, 0.12);
+  color: var(--cyan);
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.reproduce-copy-btn:hover {
+  background: var(--cyan);
+  color: #050811;
+  box-shadow: 0 0 12px var(--cyan-glow);
+}
+
+/* Comparison Table */
+.comparison-section {
+  max-width: 1060px;
+  margin: 0 auto;
+}
+
+.comparison-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  margin-top: 28px;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.comparison-table th {
+  background: #0d1527;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.comparison-table .col-feature {
+  width: 24%;
+}
+
+.comparison-table .col-vortex {
+  background: rgba(0, 243, 255, 0.08);
+  border-left: 2px solid var(--cyan);
+  border-right: 2px solid var(--cyan);
+  position: relative;
+}
+
+.th-vortex-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.th-badge {
+  font-size: 0.65rem;
+  color: #050811;
+  background: var(--cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 800;
+  width: fit-content;
+}
+
+.th-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--cyan);
+}
+
+.th-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.comparison-table .cell-vortex {
+  background: rgba(0, 243, 255, 0.04);
+  border-left: 2px solid var(--cyan);
+  border-right: 2px solid var(--cyan);
+  color: var(--text-main);
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.comparison-table tr:hover .cell-vortex {
+  background: rgba(0, 243, 255, 0.07);
+}
+
+.feature-label {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.highlight-cyan {
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.badge-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.tag-cyan {
+  background: rgba(0, 243, 255, 0.12);
+  color: var(--cyan);
+  border: 1px solid rgba(0, 243, 255, 0.3);
+}
+
+.tag-green {
+  background: rgba(0, 255, 157, 0.12);
+  color: #00ff9d;
+  border: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+/* Speed Roadmap */
+.speed-roadmap {
+  max-width: 1060px;
+  margin: 64px auto 0;
+}
+
+.roadmap-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.roadmap-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin: 8px 0;
+}
+
+.roadmap-desc {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.roadmap-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  border: 1px solid var(--border-card);
+  position: relative;
+  transition: var(--transition);
+}
+
+.roadmap-card:hover {
+  transform: translateY(-2px);
+}
+
+.card-active {
+  border-color: var(--cyan);
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.12);
+}
+
+.card-upcoming {
+  border-color: rgba(138, 43, 226, 0.6);
+}
+
+.card-future {
+  border-color: rgba(255, 255, 255, 0.15);
+  opacity: 0.9;
+}
+
+.roadmap-phase {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--cyan);
+  margin-bottom: 10px;
+}
+
+.card-upcoming .roadmap-phase {
+  color: #c77dff;
+}
+
+.card-future .roadmap-phase {
+  color: #94a3b8;
+}
+
+.roadmap-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.roadmap-stat {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--cyan);
+  margin-bottom: 12px;
+}
+
+.card-upcoming .roadmap-stat {
+  color: #c77dff;
+}
+
+.card-future .roadmap-stat {
+  color: #e2e8f0;
+}
+
+.roadmap-text {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 /* Feature Grid */
 .features-section {
   padding: 80px 0;
@@ -1168,6 +1465,26 @@ body {
   }
   .bench-card {
     padding: 20px 16px;
+  }
+  .reproduce-box {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+  }
+  .reproduce-cmd-wrap {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: space-between;
+  }
+  .comparison-table th,
+  .comparison-table td {
+    padding: 12px 14px;
+    font-size: 0.8rem;
+  }
+  .roadmap-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
   .features-grid {
     grid-template-columns: 1fr;

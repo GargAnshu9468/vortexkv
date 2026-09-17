@@ -525,6 +525,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  window.copyBenchCmd = function() {
+    const cmd = "redis-benchmark -h 127.0.0.1 -p 7379 -c 50 -n 100000 -t get,set -q";
+    navigator.clipboard.writeText(cmd).then(() => {
+      showToast("✓ Copied benchmark command!");
+    }).catch(() => {
+      showToast("✓ redis-benchmark command ready!");
+    });
+  };
+
   // Mobile Navigation Drawer Toggle
   const mobileToggleBtn = document.getElementById("mobileToggleBtn");
   const mobileNavDrawer = document.getElementById("mobileNavDrawer");

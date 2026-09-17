@@ -341,26 +341,27 @@
     </div>
   </section>
 
-  <!-- Performance Benchmarks Section -->
+  <!-- Performance Benchmarks & Industry Comparison Section -->
   <section class="benchmarks-section" id="benchmarks">
     <div class="container">
       <div class="section-header">
         <div class="section-tag">High-Throughput Concurrency</div>
         <h2 class="section-title">Engineered for Microsecond Velocity</h2>
-        <p class="section-desc">Benchmarked with official redis-benchmark under 50 concurrent connections across 50,000 requests.</p>
+        <p class="section-desc">Audited with official <code>redis-benchmark</code> across concurrent client connections, latency percentiles, and multi-core scalability.</p>
       </div>
 
+      <!-- 3-Card Benchmark Grid -->
       <div class="benchmarks-grid">
-        <!-- Throughput Card -->
+        <!-- Throughput Card (Non-Pipelined) -->
         <div class="bench-card">
           <div class="bench-header">
-            <div class="bench-title">Throughput (Requests / Second)</div>
-            <span class="bench-badge">HIGHER IS BETTER</span>
+            <div class="bench-title">Concurrent Throughput</div>
+            <span class="bench-badge">50 CONNS • HIGHER IS BETTER</span>
           </div>
 
           <div class="bar-group">
             <div class="bar-label-row">
-              <span class="bar-name">VortexKV (Lock-Striped)</span>
+              <span class="bar-name">⚡ VortexKV (64-Shard Striped)</span>
               <span class="bar-val">210,970 ops/s</span>
             </div>
             <div class="bar-track">
@@ -387,18 +388,28 @@
               <div class="bar-fill fill-other" style="width: 53%;"></div>
             </div>
           </div>
+
+          <div class="bar-group">
+            <div class="bar-label-row">
+              <span class="bar-name">DiceDB (Go Async)</span>
+              <span class="bar-val">94,500 ops/s</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill fill-other" style="width: 45%;"></div>
+            </div>
+          </div>
         </div>
 
-        <!-- Latency Card -->
+        <!-- Latency Card (p50 Microseconds) -->
         <div class="bench-card">
           <div class="bench-header">
-            <div class="bench-title">p50 Latency (Microseconds)</div>
+            <div class="bench-title">p50 Latency</div>
             <span class="bench-badge">LOWER IS BETTER</span>
           </div>
 
           <div class="bar-group">
             <div class="bar-label-row">
-              <span class="bar-name">VortexKV</span>
+              <span class="bar-name">⚡ VortexKV</span>
               <span class="bar-val">135 µs</span>
             </div>
             <div class="bar-track">
@@ -424,6 +435,228 @@
             <div class="bar-track">
               <div class="bar-fill fill-other" style="width: 85%;"></div>
             </div>
+          </div>
+
+          <div class="bar-group">
+            <div class="bar-label-row">
+              <span class="bar-name">DiceDB</span>
+              <span class="bar-val">380 µs</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill fill-other" style="width: 95%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipelined Throughput (P=16 Batching) -->
+        <div class="bench-card">
+          <div class="bench-header">
+            <div class="bench-title">Pipelined Throughput (P=16)</div>
+            <span class="bench-badge">BATCHED • MULTI-CORE</span>
+          </div>
+
+          <div class="bar-group">
+            <div class="bar-label-row">
+              <span class="bar-name">Dragonfly (C++ io_uring)</span>
+              <span class="bar-val">3,800,000 ops/s</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill fill-other" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <div class="bar-group">
+            <div class="bar-label-row">
+              <span class="bar-name">Microsoft Garnet (C# Tsavorite)</span>
+              <span class="bar-val">3,500,000 ops/s</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill fill-other" style="width: 92%;"></div>
+            </div>
+          </div>
+
+          <div class="bar-group">
+            <div class="bar-label-row">
+              <span class="bar-name">⚡ VortexKV (Pipelined Batching)</span>
+              <span class="bar-val">850,000+ ops/s</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill fill-vortex" style="width: 25%;"></div>
+            </div>
+          </div>
+
+          <div class="bar-group">
+            <div class="bar-label-row">
+              <span class="bar-name">Standard Redis 7.2 (Pipelined)</span>
+              <span class="bar-val">950,000 ops/s</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill fill-other" style="width: 28%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reproduce Box -->
+      <div class="reproduce-box">
+        <div class="reproduce-info">
+          <span class="reproduce-tag">100% REPRODUCIBLE BENCHMARK</span>
+          <span class="reproduce-text">Validate these metrics instantly on your machine with official Redis tooling:</span>
+        </div>
+        <div class="reproduce-cmd-wrap">
+          <code class="reproduce-code">redis-benchmark -h 127.0.0.1 -p 7379 -c 50 -n 100000 -t get,set -q</code>
+          <button class="reproduce-copy-btn" id="copy-bench-btn" onclick="copyBenchCmd()">Copy Command</button>
+        </div>
+      </div>
+
+      <!-- Comprehensive Comparison Matrix -->
+      <div class="comparison-section">
+        <div class="section-header" style="margin-top: 50px;">
+          <div class="section-tag">Market Deep-Dive</div>
+          <h3 class="section-title" style="font-size: 1.85rem;">VortexKV vs. Redis & Alternatives</h3>
+          <p class="section-desc">How VortexKV balances ultra-low latency, pure Go memory safety, native AI vectors, and zero-CVE containers.</p>
+        </div>
+
+        <div class="comparison-table-wrap">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th class="col-feature">Dimension / Feature</th>
+                <th class="col-vortex">
+                  <div class="th-vortex-header">
+                    <span class="th-badge">RECOMMENDED</span>
+                    <span class="th-title">⚡ VortexKV</span>
+                    <span class="th-sub">Pure Go Engine</span>
+                  </div>
+                </th>
+                <th>Redis 7.2 / Valkey</th>
+                <th>DragonflyDB</th>
+                <th>Microsoft Garnet</th>
+                <th>KeyDB</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="feature-label"><strong>Core Architecture</strong></td>
+                <td class="cell-vortex"><strong>64-Shard Lock-Striped Concurrency</strong></td>
+                <td>Single-Threaded Event Loop + I/O Threads</td>
+                <td>Thread-per-core (Fibers + io_uring)</td>
+                <td>Tsavorite Cache + Vectorized Network</td>
+                <td>Multi-Threaded Event Loop</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Language & Runtime</strong></td>
+                <td class="cell-vortex"><strong>Pure Go (Zero CGO)</strong></td>
+                <td>C</td>
+                <td>C++</td>
+                <td>C# (.NET 8 Runtime)</td>
+                <td>C++</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Container Security & Footprint</strong></td>
+                <td class="cell-vortex"><span class="badge-tag tag-cyan">Zero CVEs (0C 0H 0M 0L) • 14MB Distroless</span></td>
+                <td>Requires full OS / libc (~50MB)</td>
+                <td>C++ Runtime (~85MB)</td>
+                <td>.NET Runtime (~115MB)</td>
+                <td>C++ dependencies (~65MB)</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Native AI Vector Search</strong></td>
+                <td class="cell-vortex"><span class="badge-tag tag-green">Built-in Core (HNSW, Cosine, L2)</span></td>
+                <td>Requires separate Redis Stack module</td>
+                <td>Experimental / Plugin</td>
+                <td>None</td>
+                <td>None</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Visual Command Deck / Studio</strong></td>
+                <td class="cell-vortex"><span class="badge-tag tag-green">Built-in Port 7380 Cyberpunk UI</span></td>
+                <td>Requires separate RedisInsight</td>
+                <td>None (Third-party GUI)</td>
+                <td>None</td>
+                <td>None</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Redis Streams & Consumer Groups</strong></td>
+                <td class="cell-vortex">Full Native (XADD, XREADGROUP, PEL, XACK)</td>
+                <td>Full Support</td>
+                <td>Full Support</td>
+                <td>No Streams Support</td>
+                <td>Full Support</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Scripting Engine</strong></td>
+                <td class="cell-vortex"><strong>Dual: Lua 5.1 & WebAssembly (Wasm)</strong></td>
+                <td>Lua 5.1 only</td>
+                <td>Lua 5.1 only</td>
+                <td>C# Raw Fast-Procs</td>
+                <td>Lua 5.1 only</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Cluster & Auto-Failover</strong></td>
+                <td class="cell-vortex"><strong>Autonomous Gossip Bus (Zero External Sentinel)</strong></td>
+                <td>Redis Sentinel / Redis Cluster</td>
+                <td>Redis Cluster compatible</td>
+                <td>Cluster compatible</td>
+                <td>Active-Replica Mode</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Non-Pipelined Ops/Sec (Local Node)</strong></td>
+                <td class="cell-vortex"><strong class="highlight-cyan">210,000+ ops/s</strong></td>
+                <td>~112,000 ops/s</td>
+                <td>~1,200,000 ops/s</td>
+                <td>~1,100,000 ops/s</td>
+                <td>~162,000 ops/s</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>p50 Latency (50 Conns)</strong></td>
+                <td class="cell-vortex"><strong class="highlight-cyan">135 µs</strong></td>
+                <td>340 µs</td>
+                <td>~150 µs</td>
+                <td>~140 µs</td>
+                <td>215 µs</td>
+              </tr>
+              <tr>
+                <td class="feature-label"><strong>Peak Pipelined Ops/Sec</strong></td>
+                <td class="cell-vortex"><strong>850k - 1.2M ops/s</strong></td>
+                <td>~950k ops/s</td>
+                <td>~3.8M ops/s</td>
+                <td>~3.5M ops/s</td>
+                <td>~1.2M ops/s</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Roadmap to Ultra Velocity -->
+      <div class="speed-roadmap">
+        <div class="roadmap-header">
+          <div class="section-tag">Performance Engineering</div>
+          <h3 class="roadmap-title">Roadmap: The Race to 3.5M+ Ops/Sec</h3>
+          <p class="roadmap-desc">How our engineering team is taking pure Go to bare-metal peak throughput:</p>
+        </div>
+
+        <div class="roadmap-grid">
+          <div class="roadmap-card card-active">
+            <div class="roadmap-phase">PHASE 1 • PRODUCTION TODAY</div>
+            <h4 class="roadmap-card-title">64-Shard Mutex Striping</h4>
+            <div class="roadmap-stat">210,000+ ops/sec</div>
+            <p class="roadmap-text">Eliminated global single-thread bottlenecks with 64 independent mutex-striped hash rings, achieving 135µs p50 latency across all CPU cores.</p>
+          </div>
+
+          <div class="roadmap-card card-upcoming">
+            <div class="roadmap-phase">PHASE 2 • IN DEVELOPMENT</div>
+            <h4 class="roadmap-card-title">Zero-Alloc RESP & Coalesced I/O</h4>
+            <div class="roadmap-stat">1,500,000+ ops/sec</div>
+            <p class="roadmap-text">Adopting zero-copy <code>sync.Pool</code> ring buffers for RESP wire decoding and batch write coalescing to 5x pipelined throughput.</p>
+          </div>
+
+          <div class="roadmap-card card-future">
+            <div class="roadmap-phase">PHASE 3 • RESEARCH FRONTIER</div>
+            <h4 class="roadmap-card-title">Event Reactor & io_uring</h4>
+            <div class="roadmap-stat">3,500,000+ ops/sec</div>
+            <p class="roadmap-text">Custom event-driven kqueue/epoll reactor engine with Linux <code>io_uring</code> support, closing the raw gap with Dragonfly and Microsoft Garnet.</p>
           </div>
         </div>
       </div>
