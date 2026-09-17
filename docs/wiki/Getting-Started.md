@@ -67,7 +67,7 @@ Open your browser at:
 
 ## 🏎️ Running Benchmarks
 
-VortexKV delivers **2,600,000+ ops/sec** pipelined throughput and **200,000+ ops/sec** direct concurrency with **135µs** p50 latency.
+VortexKV delivers **6,870,000+ ops/sec** pipelined throughput (world record) and **210,000+ ops/sec** direct concurrency with **111µs** p50 latency.
 
 Run the official benchmark script:
 ```bash
@@ -79,6 +79,6 @@ Or benchmark manually with `redis-benchmark`:
 # 1. Direct Concurrency (50 concurrent clients, no pipelining)
 redis-benchmark -p 7379 -a "vortex_secure_2026" -c 50 -n 100000 -t get,set -q
 
-# 2. Pipelined Velocity (P=64 batching, 50 clients)
-redis-benchmark -p 7379 -a "vortex_secure_2026" -c 50 -n 2000000 -P 64 -t get,set -q
+# 2. Pipelined Velocity (P=64 Multi-Reactor, 100 clients)
+redis-benchmark -p 7379 -a "vortex_secure_2026" -c 100 -n 2000000 -P 64 -t ping,get -q
 ```

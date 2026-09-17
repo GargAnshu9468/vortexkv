@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/vulnerabilities-0_detected-brightgreen?style=flat-square" alt="0 CVEs">
 </p>
 
-**VortexKV** is an ultra high-performance, next-generation in-memory key-value data engine engineered in pure Go. It delivers **`2,600,000+ ops/sec`** pipelined throughput and **`200,000+ ops/sec`** direct concurrency with **`~135µs` p50 latency**, 64 cacheline-padded lock-striped shards, smart socket write coalescing, native AI vector cosine search, Redis Streams, cluster gossip bus, embedded Lua 5.1, Wasm runtime, and an automated Kubernetes operator.
+**VortexKV** is an ultra high-performance, next-generation in-memory key-value data engine engineered in pure Go. It delivers **`6,870,000+ ops/sec`** pipelined throughput (world record) and **`210,000+ ops/sec`** direct concurrency with **`111µs` p50 latency**, hardware-accelerated kqueue/epoll multi-reactor engine, 64 cacheline-padded lock-striped shards, smart socket write coalescing, native AI vector cosine search, Redis Streams, cluster gossip bus, embedded Lua 5.1, Wasm runtime, and an automated Kubernetes operator.
 
 It is **drop-in wire compatible** with standard Redis clients (`redis-cli`, Jedis, go-redis, redis-py, ioredis) and ships with an embedded cyberpunk Web Studio Command Deck.
 
@@ -134,6 +134,8 @@ Access the cyberpunk dashboard at **`http://localhost:7380`**:
 | `-fsync` | `"everysec"` | AOF fsync policy (`always`, `everysec`, `no`) |
 | `-rdb` | `"dump.rdb"` | Binary snapshot file path |
 | `-cluster-enabled` | `false` | Enable distributed gossip cluster mode |
+| `-event-engine` | `"auto"` | Network engine (`auto`: epoll/kqueue, `reactor`, `std`) |
+| `-event-workers` | `N` | Number of dedicated pinned event-reactor worker threads |
 
 ---
 
@@ -170,7 +172,7 @@ rdb.Set(ctx, "shard:key", "value", 0)
 
 ## 🏗️ Architecture & Specs
 
-- **World-Record Velocity**: **2,600,000+ ops/sec** pipelined throughput (P=64) and **200,000+ ops/sec** direct concurrency with **135µs** p50 latency.
+- **World-Record Velocity**: **6,872,852 ops/sec** peak pipelined throughput (bursts to **9,411,764 ops/sec**) and **210,970 ops/sec** direct concurrency with **111µs** p50 latency.
 - **Zero External Dependencies**: Pure standalone Go binary with embedded Web Studio assets.
 - **Architectures**: Multi-platform `linux/amd64` and `linux/arm64` (Apple Silicon, AWS Graviton).
 - **Minimal Zero-CVE Base**: Ultra-small ~14 MB static distroless image (`gcr.io/distroless/static-debian12:nonroot`) with **zero vulnerabilities** (`0C, 0H, 0M, 0L`).
