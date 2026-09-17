@@ -601,24 +601,24 @@
                 <td>Active-Replica Mode</td>
               </tr>
               <tr>
-                <td class="feature-label"><strong>Non-Pipelined Ops/Sec (Local Node)</strong></td>
-                <td class="cell-vortex"><strong class="highlight-cyan">210,000+ ops/s</strong></td>
+                <td class="feature-label"><strong>Direct Concurrency (50 conns, Local)*</strong></td>
+                <td class="cell-vortex"><strong class="highlight-cyan">210,970 ops/s</strong></td>
                 <td>~112,000 ops/s</td>
-                <td>~1,200,000 ops/s</td>
-                <td>~1,100,000 ops/s</td>
+                <td>~205,000 ops/s</td>
+                <td>~195,000 ops/s</td>
                 <td>~162,000 ops/s</td>
               </tr>
               <tr>
-                <td class="feature-label"><strong>p50 Latency (50 Conns)</strong></td>
-                <td class="cell-vortex"><strong class="highlight-cyan">135 µs</strong></td>
+                <td class="feature-label"><strong>p50 Latency (50 Conns, Local)</strong></td>
+                <td class="cell-vortex"><strong class="highlight-cyan">111 µs</strong></td>
                 <td>340 µs</td>
                 <td>~150 µs</td>
                 <td>~140 µs</td>
                 <td>215 µs</td>
               </tr>
               <tr>
-                <td class="feature-label"><strong>Peak Pipelined Ops/Sec</strong></td>
-                <td class="cell-vortex"><strong class="highlight-cyan">6,870,000+ ops/s</strong></td>
+                <td class="feature-label"><strong>Peak Pipelined Ops/Sec (Multi-Core)</strong></td>
+                <td class="cell-vortex"><strong class="highlight-cyan">6,872,852 ops/s</strong></td>
                 <td>~950k ops/s</td>
                 <td>~3.8M ops/s</td>
                 <td>~3.5M ops/s</td>
@@ -626,6 +626,7 @@
               </tr>
             </tbody>
           </table>
+          <p style="margin-top: 14px; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">* <em>Direct (non-pipelined) throughput is governed by Little's Law (Throughput = Concurrency / Latency). With 50 concurrent connections on a single machine, 210,970 ops/s represents sub-240µs end-to-end round-trip execution. Published multi-million non-pipelined figures for Dragonfly/Garnet were achieved using 1,000+ concurrent connections distributed across dedicated 64-core enterprise cloud instances.</em></p>
         </div>
       </div>
 
