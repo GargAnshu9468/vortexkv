@@ -14,6 +14,7 @@ import (
 
 	"github.com/vortexkv/vortexkv/internal/engine"
 	"github.com/vortexkv/vortexkv/internal/pubsub"
+	"github.com/vortexkv/vortexkv/internal/reactor"
 	"github.com/vortexkv/vortexkv/internal/resp"
 )
 
@@ -26,6 +27,11 @@ type TCPServer struct {
 	connCount  atomic.Int64
 	MaxClients int64
 	TLSConfig  *tls.Config
+
+	EngineType string
+	Workers    int
+	RingSize   int
+	reactorSrv reactor.Server
 }
 
 func NewTCPServer(addr string, eng *engine.Engine) *TCPServer {
@@ -34,10 +40,30 @@ func NewTCPServer(addr string, eng *engine.Engine) *TCPServer {
 		engine:     eng,
 		stopChan:   make(chan struct{}),
 		MaxClients: 10000,
+		EngineType: "std",
 	}
 }
 
 func (s *TCPServer) Start() error {
+	if s.TLSConfig == nil && s.EngineType != "std" {
+		cfg := reactor.Config{
+			Addr:       s.addr,
+			Engine:     s.engine,
+			Workers:    s.Workers,
+			RingSize:   s.RingSize,
+			MaxClients: s.MaxClients,
+			EngineType: s.EngineType,
+		}
+		rSrv, err := reactor.NewServer(cfg)
+		if err == nil {
+			if err := rSrv.Start(); err == nil {
+				s.reactorSrv = rSrv
+				return nil
+			}
+			log.Printf("[VortexKV] Note: Reactor start fallback to std: %v", err)
+		}
+	}
+
 	var l net.Listener
 	var err error
 
@@ -306,6 +332,9 @@ func (s *TCPServer) handleSubscribedClient(
 }
 
 func (s *TCPServer) Stop() error {
+	if s.reactorSrv != nil {
+		return s.reactorSrv.Stop()
+	}
 	close(s.stopChan)
 	if s.listener != nil {
 		_ = s.listener.Close()

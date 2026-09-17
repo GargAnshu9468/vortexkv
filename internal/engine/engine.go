@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/vortexkv/vortexkv/internal/cluster"
@@ -38,9 +39,10 @@ type Engine struct {
 	Wasm           *WasmManager
 	Replication    *replication.ReplicationManager
 	Cluster        *cluster.ClusterManager
-	Password       string
-	MaxMemory      uint64 // in bytes; 0 = unlimited
-	EvictionPolicy string // "allkeys-lru", "volatile-lru", "noeviction"
+	Password          string
+	MaxMemory         uint64 // in bytes; 0 = unlimited
+	EvictionPolicy    string // "allkeys-lru", "volatile-lru", "noeviction"
+	memCheckCounter   atomic.Uint64
 
 	muClients      sync.RWMutex
 	clientSessions map[string]*ClientSession
@@ -336,8 +338,8 @@ func (e *Engine) ExecuteCommandWithSession(session *ClientSession, connID string
 
 	val, isWrite := e.dispatch(connID, cmdName, args[1:])
 
-	// MaxMemory enforcement for mutating commands
-	if isWrite && e.MaxMemory > 0 {
+	// MaxMemory enforcement for mutating commands: sampled every 2048 writes to avoid ReadMemStats STW pause
+	if isWrite && e.MaxMemory > 0 && (e.memCheckCounter.Add(1)&2047 == 0) {
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
 		if m.Alloc > e.MaxMemory {
@@ -1459,10 +1461,12 @@ func (e *Engine) handleSet(args []string) (resp.Value, bool) {
 		ExpiresAt: expiresAt,
 	})
 
-	e.Telemetry.BroadcastEvent(map[string]any{
-		"type": "set",
-		"key":  key,
-	})
+	if e.Telemetry.HasEventListeners() {
+		e.Telemetry.BroadcastEvent(map[string]any{
+			"type": "set",
+			"key":  key,
+		})
+	}
 
 	return resp.SimpleString("OK"), true
 }

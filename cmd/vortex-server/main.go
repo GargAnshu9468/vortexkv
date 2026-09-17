@@ -56,6 +56,10 @@ func main() {
 	aofPath := flag.String("aof", "vortex.aof", "Path to Append-Only File (leave empty to disable persistence)")
 	rdbPath := flag.String("rdb", "dump.rdb", "Path to binary RDB snapshot file (leave empty to disable)")
 	fsync := flag.String("fsync", "everysec", "Fsync policy for AOF: always | everysec | no")
+
+	eventEngine := flag.String("event-engine", "auto", "Network event engine: auto | reactor | std (default: auto)")
+	eventWorkers := flag.Int("event-workers", 0, "Number of dedicated reactor worker loops (default: CPU cores)")
+	eventRingSize := flag.Int("event-ring-size", 256*1024, "Size of reactor connection ring buffers in bytes (default: 256KB)")
 	flag.Parse()
 
 	fmt.Print(banner)
@@ -131,6 +135,9 @@ func main() {
 	addr := fmt.Sprintf("%s:%d", *bind, *port)
 	tcpServer := server.NewTCPServer(addr, eng)
 	tcpServer.MaxClients = *maxclients
+	tcpServer.EngineType = *eventEngine
+	tcpServer.Workers = *eventWorkers
+	tcpServer.RingSize = *eventRingSize
 
 	if *tlsCert != "" && *tlsKey != "" {
 		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)

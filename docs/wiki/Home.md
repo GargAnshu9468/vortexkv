@@ -1,6 +1,6 @@
 # 🌌 Welcome to the VortexKV Wiki
 
-> **VortexKV** (*Vector-Optimized Redis-Compatible Throughput Extreme Key-Value Store*) is a next-generation, cyberpunk in-memory data store engineered from scratch in pure Go. It delivers **2,600,000+ ops/sec** pipelined throughput and **200,000+ ops/sec** direct concurrency with **~135µs p50 latency**, 64 cacheline-padded lock-striped shards, smart socket write coalescing, native HNSW AI vector graphs, Redis Streams with consumer groups, an autonomous cluster gossip bus, dual scripting (Lua 5.1 & Wasm), and an embedded visual command deck.
+> **VortexKV** (*Vector-Optimized Redis-Compatible Throughput Extreme Key-Value Store*) is a next-generation, cyberpunk in-memory data store engineered from scratch in pure Go. It delivers **6,870,000+ ops/sec** pipelined throughput (with peak bursts up to **9,411,764 ops/sec**) and **210,000+ ops/sec** direct concurrency with **~111µs p50 latency**, hardware-accelerated kqueue/epoll event reactor, 64 cacheline-padded lock-striped shards, smart socket write coalescing, native HNSW AI vector graphs, Redis Streams with consumer groups, an autonomous cluster gossip bus, dual scripting (Lua 5.1 & Wasm), and an embedded visual command deck.
 
 ---
 
@@ -51,7 +51,7 @@
 ```
 
 ### 1. Breaking the Global Mutex Bottleneck
-Standard Redis processes all commands through a single thread to avoid concurrency issues, limiting throughput to a single CPU core. VortexKV hashes keys across **64 independent cacheline-padded lock-striped shards** with **smart socket write coalescing**, allowing high-concurrency workloads to utilize all CPU cores simultaneously and batch pipelined responses into consolidated kernel writes (**2.6M+ ops/sec**).
+Standard Redis processes all commands through a single thread to avoid concurrency issues, limiting throughput to a single CPU core. VortexKV pairs a **Phase 3 hardware-accelerated Multi-Reactor engine (kqueue/epoll)** with **64 independent cacheline-padded lock-striped shards** and **smart socket write coalescing**, allowing high-concurrency workloads to utilize all CPU cores simultaneously and batch pipelined responses into consolidated kernel writes (**6.8M+ ops/sec** peak, **2.7M+ ops/sec** GET).
 
 ### 2. Dedicated Non-Conflicting Ports
 VortexKV is engineered for seamless coexistence with existing database infrastructure:

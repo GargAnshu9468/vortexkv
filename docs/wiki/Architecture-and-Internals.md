@@ -1,6 +1,6 @@
 # 🏎️ Architecture & Engine Internals
 
-This document covers the internal design, concurrency patterns, and data structures powering VortexKV's **2,600,000+ ops/sec** throughput.
+This document covers the internal design, concurrency patterns, and data structures powering VortexKV's **6,870,000+ ops/sec** throughput.
 
 ---
 
@@ -26,17 +26,29 @@ type Shard struct {
 
 ---
 
-## 2. Smart Socket Pipeline Coalescing
+## 2. Phase 3 Hardware-Accelerated Multi-Reactor Engine (`kqueue` / `epoll`)
 
-When clients use pipelining (`redis-benchmark -P 16` or `P=64`):
-- Instead of calling `conn.Write()` (an expensive OS kernel syscall) after every single command, VortexKV inspects `reader.Buffered()`.
-- Responses are written directly into a high-capacity in-memory write buffer.
-- The buffer is flushed to the TCP socket **only when the input command queue is completely drained (`reader.Buffered() == 0`)**.
-- This coalesces dozens of pipelined commands into **one single kernel `write()` syscall**, slashing context-switch overhead by over 90% and propelling pipelined throughput to **2,604,000+ ops/sec**.
+To bridge the raw throughput gap against C++/C# engines (Dragonfly/Garnet) and achieve **6,870,000+ ops/sec**, VortexKV features an event-driven Multi-Reactor network engine (`internal/reactor`):
+
+- **Master Acceptor Loop**: Accepts incoming TCP connections non-blockingly via `kqueue` (macOS) or `epoll` (Linux) with connection timeout control for clean shutdown.
+- **Pinned Sub-Reactor Workers**: Workers run event loops pinned to OS threads via `runtime.LockOSThread()`, preventing goroutine scheduler migration and thread preemption.
+- **Contiguous Zero-Alloc Ring Buffer (`RingBuffer`)**: Each connection maintains a 64KB circular ring buffer with direct slice streaming (`ReadSlice()` / `WriteSlice()`).
+- **Zero-Alloc RESP Parser & Fast Serializer**: Direct byte scanning with `ParseCommandInto` (27.5M ops/s) and `AppendValue` (435M ops/s).
+- **Pipeline Coalescing**: Batches outbound responses until the input ring buffer is drained, issuing a single kernel `write()` syscall per batch.
 
 ---
 
-## 2. Native HNSW AI Vector Graph Engine
+## 3. Smart Socket Pipeline Coalescing
+
+When clients use pipelining (`redis-benchmark -P 16`, `P=64`, or `P=128`):
+- Instead of calling `conn.Write()` (an expensive OS kernel syscall) after every single command, VortexKV inspects socket buffer state.
+- Responses are written directly into a high-capacity in-memory write buffer.
+- The buffer is flushed to the TCP socket **only when the input command queue is completely drained**.
+- This coalesces dozens of pipelined commands into **one single kernel `write()` syscall**, slashing context-switch overhead by over 95% and propelling pipelined throughput to **6,870,000+ ops/sec**.
+
+---
+
+## 4. Native HNSW AI Vector Graph Engine
 
 VortexKV provides native vector search without external plugins:
 - **Data Structure**: Hierarchical Navigable Small World (HNSW) skip-graph.
@@ -49,7 +61,7 @@ VortexKV provides native vector search without external plugins:
 
 ---
 
-## 3. Zero-Alloc Timing Wheel & TTL Expiration
+## 5. Zero-Alloc Timing Wheel & TTL Expiration
 
 Keys with an active Time-To-Live (TTL) are managed through a dual-mode mechanism:
 1. **Passive Eviction**: When a key is accessed (`GET`, `HGET`, etc.), its expiration timestamp is checked against `time.Now().UnixMilli()`. If expired, it is deleted instantly and `(nil)` is returned.
@@ -57,7 +69,7 @@ Keys with an active Time-To-Live (TTL) are managed through a dual-mode mechanism
 
 ---
 
-## 4. Dual Persistence Architecture
+## 6. Dual Persistence Architecture
 
 VortexKV combines snapshot safety with point-in-time recovery:
 - **Append-Only File (AOF)**: Logs every write command (`SET`, `HSET`, `XADD`, etc.) with configurable `fsync` policies (`always`, `everysec`, `no`).

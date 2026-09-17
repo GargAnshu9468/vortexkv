@@ -1,5 +1,7 @@
 # Compiled binaries
 bin/
+vortex-server
+vortex-cli
 *.exe
 *.exe~
 *.dll

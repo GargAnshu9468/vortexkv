@@ -53,6 +53,7 @@ type Telemetry struct {
 	muListeners        sync.RWMutex
 	listeners          map[chan MetricsSnapshot]struct{}
 	eventListeners     map[chan map[string]any]struct{}
+	eventListenerCount atomic.Int32
 }
 
 func NewTelemetry() *Telemetry {
@@ -141,7 +142,14 @@ func (t *Telemetry) RecordCommand(cmdName string, durationMicro int64, args []st
 	}
 }
 
+func (t *Telemetry) HasEventListeners() bool {
+	return t.eventListenerCount.Load() > 0
+}
+
 func (t *Telemetry) BroadcastEvent(event map[string]any) {
+	if t.eventListenerCount.Load() == 0 {
+		return
+	}
 	t.muListeners.RLock()
 	defer t.muListeners.RUnlock()
 
@@ -157,14 +165,18 @@ func (t *Telemetry) SubscribeEvents() chan map[string]any {
 	ch := make(chan map[string]any, 100)
 	t.muListeners.Lock()
 	t.eventListeners[ch] = struct{}{}
+	t.eventListenerCount.Add(1)
 	t.muListeners.Unlock()
 	return ch
 }
 
 func (t *Telemetry) UnsubscribeEvents(ch chan map[string]any) {
 	t.muListeners.Lock()
-	delete(t.eventListeners, ch)
-	close(ch)
+	if _, exists := t.eventListeners[ch]; exists {
+		delete(t.eventListeners, ch)
+		t.eventListenerCount.Add(-1)
+		close(ch)
+	}
 	t.muListeners.Unlock()
 }
 

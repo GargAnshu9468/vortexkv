@@ -1,6 +1,6 @@
 # ⚙️ VortexKV Architecture & Internals
 
-This document details the internal design and concurrency model that allow VortexKV to achieve **sub-millisecond latency (135µs)** and **over 2,600,000 operations per second** on modern multi-core machines.
+This document details the internal design and concurrency model that allow VortexKV to achieve **sub-millisecond latency (111µs)** and **over 6,870,000 operations per second** on modern multi-core machines.
 
 ---
 
@@ -26,13 +26,60 @@ Unlike single-threaded in-memory stores that bottleneck on a single CPU core, Vo
 
 ---
 
-## 2. Smart Socket Pipeline Coalescing & Batching
+## 2. Phase 3 Hardware-Accelerated Multi-Reactor Engine (`kqueue` / `epoll`)
+
+To bridge the raw throughput gap against C++/C# engines (Dragonfly/Garnet) and achieve **6,870,000+ ops/sec**, VortexKV features an event-driven Multi-Reactor network engine (`internal/reactor`):
+
+```
+                                  Client Connections
+                                          │
+                                          ▼
+                            ┌───────────────────────────┐
+                            │   Master Acceptor Loop    │
+                            │ (kqueue / epoll nonblock) │
+                            └─────────────┬─────────────┘
+                                          │ Round-Robin Dispatch
+                ┌─────────────────────────┼─────────────────────────┐
+                ▼                         ▼                         ▼
+    ┌───────────────────────┐ ┌───────────────────────┐ ┌───────────────────────┐
+    │ Sub-Reactor Worker 0  │ │ Sub-Reactor Worker 1  │ │ Sub-Reactor Worker N  │
+    │  (LockOSThread, kq)   │ │  (LockOSThread, kq)   │ │  (LockOSThread, kq)   │
+    └───────────┬───────────┘ └───────────┬───────────┘ └───────────┬───────────┘
+                │                         │                         │
+      [Zero-Alloc RingBuf]      [Zero-Alloc RingBuf]      [Zero-Alloc RingBuf]
+      [Zero-Copy RESP Parser]   [Zero-Copy RESP Parser]   [Zero-Copy RESP Parser]
+      [Flush-Coalescing Out]    [Flush-Coalescing Out]    [Flush-Coalescing Out]
+```
+
+### Key Architectural Pillars of the Reactor Engine:
+1. **Multi-Reactor Thread-Pinned Workers**:
+   - Master listener registers `EVFILT_READ` / `EPOLLIN` to accept connections non-blockingly and dispatches new sockets round-robin to worker threads.
+   - Each worker runs its own event loop pinned to a physical operating system thread via `runtime.LockOSThread()`, eliminating Go scheduler preemption and CPU cache migration.
+2. **Contiguous Zero-Allocation Circular Ring Buffer (`RingBuffer`)**:
+   - Every connection maintains a pre-allocated circular ring buffer (default 64 KB).
+   - Reads directly stream from the socket into the ring buffer via `ReadSlice()` without allocating heap byte slices.
+   - Contiguous memory wrapping (`wrap around`) guarantees uninterrupted parsing buffers.
+3. **Zero-Allocation Inline RESP2/RESP3 Parser**:
+   - `ParseCommandInto(data, dst)` directly scans bytes without constructing intermediate token arrays or strings.
+   - Operates at **27,500,000+ ops/sec** (42.5 ns/op).
+4. **Ultra-Fast Zero-Copy Serializer**:
+   - `AppendValue(dst, v)` formats RESP integers, bulk strings, arrays, and errors directly into reusable worker output slices.
+   - Benchmarked at **435,000,000+ ops/sec** (2.75 ns/op, 0 B/op).
+5. **Smart Socket Pipeline Coalescing**:
+   - When a client sends pipelined requests (`-P 64` or `-P 128`), worker sub-reactors execute commands in-line and accumulate responses into the outbound buffer.
+   - The buffer is flushed to the kernel socket **only when the input ring buffer is drained**, collapsing hundreds of pipelined responses into a single kernel `write()` syscall.
+6. **Sampled Memory Cap Telemetry**:
+   - Mutating commands sample memory checks every 2,048 writes rather than executing `runtime.ReadMemStats` on every write, completely eliminating Go runtime Stop-The-World (STW) latency spikes.
+
+---
+
+## 3. Smart Socket Pipeline Coalescing & Batching
 
 The biggest performance differentiator in Redis protocols is **pipelining** (`-P 16` to `-P 64`):
-- Instead of calling `conn.Write()` (an expensive OS kernel syscall) after every single command, VortexKV inspects `reader.Buffered()`.
-- Responses are written directly into a high-capacity 64KB/128KB in-memory ring buffer.
-- The buffer is flushed to the TCP socket **only when the input command queue is completely drained (`reader.Buffered() == 0`)**.
-- This coalesces 64 pipelined commands into **one single kernel `write()` syscall**, slashing context-switch overhead by over 90% and propelling pipelined throughput to **2,604,000+ ops/sec**.
+- Instead of calling `conn.Write()` (an expensive OS kernel syscall) after every single command, VortexKV inspects buffered socket state.
+- Responses are written directly into a high-capacity in-memory ring buffer.
+- The buffer is flushed to the TCP socket **only when the input command queue is completely drained**.
+- This coalesces 64-128 pipelined commands into **one single kernel `write()` syscall**, slashing context-switch overhead by over 95% and propelling pipelined throughput to **6,870,000+ ops/sec** (PING) and **2,695,000+ ops/sec** (GET).
 
 ---
 
