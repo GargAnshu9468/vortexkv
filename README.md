@@ -240,7 +240,14 @@ redis-cli -p 7379 -a "vortex_secure_2026" VSEARCH embeddings 1 cosine 0.90 0.10 
 
 ## 📊 Benchmark Results
 
-VortexKV delivers industry-leading performance across both non-pipelined and pipelined workloads using official `redis-benchmark`:
+VortexKV delivers industry-leading performance across both non-pipelined and pipelined workloads using official `redis-benchmark`.
+
+### 🔬 60-Second Benchmark Reproducibility Kit
+Verify these throughput and latency numbers directly on your own hardware in 60 seconds:
+```bash
+git clone https://github.com/GargAnshu9468/vortexkv.git && cd vortexkv
+./scripts/reproduce_benchmarks.sh
+```
 
 ### 1. Direct Non-Pipelined Concurrency (50 concurrent connections)
 ```bash
