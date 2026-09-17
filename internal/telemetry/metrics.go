@@ -265,7 +265,7 @@ func (t *Telemetry) GenerateRedisInfo(totalKeys int64) string {
 	return fmt.Sprintf(
 		"# Server\r\n"+
 			"redis_version:7.2.0-vortex-1.0.0\r\n"+
-			"vortexkv_version:1.0.0-beta\r\n"+
+			"vortexkv_version:1.0.0-PROD\r\n"+
 			"os:%s\r\n"+
 			"arch:%s\r\n"+
 			"uptime_in_seconds:%d\r\n"+
