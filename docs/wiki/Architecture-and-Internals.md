@@ -26,7 +26,7 @@ type Shard struct {
 
 ---
 
-## 2. Phase 3 Hardware-Accelerated Multi-Reactor Engine (`kqueue` / `epoll`)
+## 2. Hardware-Accelerated Multi-Reactor Engine (`kqueue` / `epoll`)
 
 To bridge the raw throughput gap against C++/C# engines (Dragonfly/Garnet) and achieve **6,870,000+ ops/sec**, VortexKV features an event-driven Multi-Reactor network engine (`internal/reactor`):
 

@@ -251,7 +251,7 @@ redis-benchmark -p 7379 -a "vortex_secure_2026" -c 50 -n 100000 -t get,set -q
 | **GET** | **`210,970 reqs/sec`** | **`0.111 ms`** | `0.343 ms` |
 | **SET** | **`190,114 reqs/sec`** | **`0.143 ms`** | `0.399 ms` |
 
-### 2. High-Throughput Multi-Reactor Pipeline (Phase 3 Event Reactor)
+### 2. High-Throughput Multi-Reactor Pipeline (Pipelined Batching)
 ```bash
 # Extreme throughput with P=64 / P=128 pipelining:
 redis-benchmark -p 7379 -a "vortex_secure_2026" -c 100 -n 2000000 -P 64 -t ping -q
@@ -259,8 +259,8 @@ redis-benchmark -p 7379 -a "vortex_secure_2026" -c 100 -n 2000000 -P 128 -t get 
 ```
 | Engine Mode & Pipeline | Workload | Throughput | Peak Interval Burst |
 | :--- | :--- | :--- | :--- |
-| **Phase 3 Event-Reactor (P=64)** | **PING** | **`6,872,852 ops/sec`** | **`9,411,764 ops/sec`** |
-| **Phase 3 Event-Reactor (P=128)** | **GET** | **`2,695,417 ops/sec`** | **`2,913,792 ops/sec`** |
+| **Multi-Reactor Engine (P=64)** | **PING** | **`6,872,852 ops/sec`** | **`9,411,764 ops/sec`** |
+| **Multi-Reactor Engine (P=128)** | **GET** | **`2,695,417 ops/sec`** | **`2,913,792 ops/sec`** |
 | **Raw In-Memory Lookup** | **FNV-1a / Shard** | **`75,929,643 ops/sec`** | `27.19 ns/op` |
 | **RESP Wire Serializer** | **AppendValue** | **`435,497,194 ops/sec`** | `2.75 ns/op` |
 

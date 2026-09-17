@@ -23,7 +23,7 @@ echo "⚡ Building optimized VortexKV binary..."
 echo "========================================================================"
 go build -ldflags="-s -w" -o ./bin/vortex-server ./cmd/vortex-server
 
-echo "🚀 Starting VortexKV on 127.0.0.1:$PORT (Pure in-memory Phase 3 Event-Reactor mode)..."
+echo "🚀 Starting VortexKV on 127.0.0.1:$PORT (Pure in-memory Multi-Reactor mode)..."
 ./bin/vortex-server -bind 127.0.0.1 -port $PORT -event-engine auto -web-enabled=false -aof "" -rdb "" > "$DATA_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 
