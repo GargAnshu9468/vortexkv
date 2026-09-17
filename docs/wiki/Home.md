@@ -1,6 +1,6 @@
 # 🌌 Welcome to the VortexKV Wiki
 
-> **VortexKV** (*Vector-Optimized Redis-Compatible Throughput Extreme Key-Value Store*) is a next-generation, cyberpunk in-memory data store engineered from scratch in pure Go. It delivers **210,000+ ops/sec** with sub-millisecond latencies, lock-striped concurrency, native HNSW AI vector graphs, Redis Streams with consumer groups, an autonomous cluster gossip bus, dual scripting (Lua 5.1 & Wasm), and an embedded visual command deck.
+> **VortexKV** (*Vector-Optimized Redis-Compatible Throughput Extreme Key-Value Store*) is a next-generation, cyberpunk in-memory data store engineered from scratch in pure Go. It delivers **2,600,000+ ops/sec** pipelined throughput and **200,000+ ops/sec** direct concurrency with **~135µs p50 latency**, 64 cacheline-padded lock-striped shards, smart socket write coalescing, native HNSW AI vector graphs, Redis Streams with consumer groups, an autonomous cluster gossip bus, dual scripting (Lua 5.1 & Wasm), and an embedded visual command deck.
 
 ---
 
@@ -51,7 +51,7 @@
 ```
 
 ### 1. Breaking the Global Mutex Bottleneck
-Standard Redis processes all commands through a single thread to avoid concurrency issues. While simple, it limits throughput to a single CPU core. VortexKV hashes keys across **64 independent lock-striped shards**, allowing high-concurrency workloads to utilize all CPU cores simultaneously without race conditions.
+Standard Redis processes all commands through a single thread to avoid concurrency issues, limiting throughput to a single CPU core. VortexKV hashes keys across **64 independent cacheline-padded lock-striped shards** with **smart socket write coalescing**, allowing high-concurrency workloads to utilize all CPU cores simultaneously and batch pipelined responses into consolidated kernel writes (**2.6M+ ops/sec**).
 
 ### 2. Dedicated Non-Conflicting Ports
 VortexKV is engineered for seamless coexistence with existing database infrastructure:

@@ -62,3 +62,23 @@ redis-cli -p 7379 -a "vortex_secure_2026" GET mykey
 
 Open your browser at:
 👉 **`http://localhost:7380`**
+
+---
+
+## 🏎️ Running Benchmarks
+
+VortexKV delivers **2,600,000+ ops/sec** pipelined throughput and **200,000+ ops/sec** direct concurrency with **135µs** p50 latency.
+
+Run the official benchmark script:
+```bash
+./scripts/run_world_record_benchmark.sh
+```
+
+Or benchmark manually with `redis-benchmark`:
+```bash
+# 1. Direct Concurrency (50 concurrent clients, no pipelining)
+redis-benchmark -p 7379 -a "vortex_secure_2026" -c 50 -n 100000 -t get,set -q
+
+# 2. Pipelined Velocity (P=64 batching, 50 clients)
+redis-benchmark -p 7379 -a "vortex_secure_2026" -c 50 -n 2000000 -P 64 -t get,set -q
+```

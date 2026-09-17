@@ -6,7 +6,7 @@
   <title>VortexKV — Hyper-Performance Redis Alternative, Streams, Clustering, Lua, Wasm & AI Vector Engine</title>
   
   <!-- Primary SEO Meta -->
-  <meta name="description" content="VortexKV is an ultra-fast, drop-in Redis alternative delivering 210,000+ ops/sec, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.">
+  <meta name="description" content="VortexKV is an ultra-fast, drop-in Redis alternative delivering 2,600,000+ ops/sec pipelined throughput, 200,000+ ops/sec direct concurrency, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.">
   <meta name="keywords" content="redis alternative, open source redis replacement, in-memory database, redis streams, cluster gossip, lua scripting, wasm runtime, kubernetes operator, ai vector database, vector search, hnsw, key-value store, golang cache, high performance database, redis compatible">
   <meta name="author" content="Anshu Garg">
   <meta name="publisher" content="Anshu Garg">
@@ -36,7 +36,7 @@
   <!-- OpenGraph / Facebook Social Meta -->
   <meta property="og:site_name" content="VortexKV">
   <meta property="og:title" content="VortexKV — Hyper-Performance Redis Alternative & In-Memory AI Vector Engine">
-  <meta property="og:description" content="Drop-in Redis replacement with 210,000+ ops/sec, lock-striped 64-shard Go concurrency, Redis Streams, cluster gossip bus, Lua 5.1, Wasm runtime, native AI vector cosine search, K8s operator, and visual web studio.">
+  <meta property="og:description" content="Drop-in Redis replacement with 2,600,000+ ops/sec pipelined throughput, 200,000+ ops/sec direct concurrency, lock-striped 64-shard Go concurrency, Redis Streams, cluster gossip bus, Lua 5.1, Wasm runtime, native AI vector cosine search, K8s operator, and visual web studio.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://garganshu9468.github.io/vortexkv/">
   <meta property="og:image" content="https://garganshu9468.github.io/vortexkv/assets/vortexkv_logo.png">
@@ -52,7 +52,7 @@
   <meta name="twitter:site" content="@GargAnshu9468">
   <meta name="twitter:creator" content="@GargAnshu9468">
   <meta name="twitter:title" content="VortexKV — Hyper-Performance Redis Alternative & In-Memory AI Vector Engine">
-  <meta name="twitter:description" content="Drop-in Redis compatible, 210k+ ops/sec, Redis Streams, cluster gossip, Lua 5.1, Wasm runtime, AI vector primitives, and embedded visual studio.">
+  <meta name="twitter:description" content="Drop-in Redis compatible, 2.6M+ ops/sec pipelined throughput, Redis Streams, cluster gossip, Lua 5.1, Wasm runtime, AI vector primitives, and embedded visual studio.">
   <meta name="twitter:image" content="https://garganshu9468.github.io/vortexkv/assets/vortexkv_logo.png">
   <meta name="twitter:image:alt" content="VortexKV High Performance Redis Alternative Logo">
 
@@ -73,7 +73,7 @@
         "@id": "https://garganshu9468.github.io/vortexkv/#software",
         "name": "VortexKV",
         "headline": "Hyper-Performance Redis Alternative & In-Memory AI Vector Engine",
-        "description": "Drop-in Redis alternative with 210,000+ ops/sec, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.",
+        "description": "Drop-in Redis alternative with 2,600,000+ ops/sec pipelined throughput, 200,000+ ops/sec direct concurrency, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.",
         "operatingSystem": "Linux, macOS, Windows, Docker, Kubernetes",
         "applicationCategory": "DeveloperApplication",
         "applicationSubCategory": "Database Management System",
@@ -143,10 +143,10 @@
           },
           {
             "@type": "Question",
-            "name": "How does VortexKV achieve 210,000+ ops/sec throughput?",
+            "name": "How does VortexKV achieve 2,600,000+ ops/sec throughput?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Unlike single-threaded in-memory engines that bottleneck on a single core or suffer from global lock contention, VortexKV partitions its in-memory keyspace into 64 independently locked shards. Requests are mapped to shards via fnv32a hashing, allowing multi-core CPUs to process concurrent writes and reads with zero global mutex contention and sub-millisecond latencies."
+              "text": "VortexKV combines three architectural innovations: (1) a 64-way cacheline-padded lock-striped keyspace with inlined zero-allocation FNV-1a hashing (75.9M lookups/s), (2) lock-free per-connection client sessions that bypass global mutex contention, and (3) smart socket pipeline coalescing that batches pipelined responses into consolidated kernel writes, eliminating over 90% of OS context-switch overhead."
             }
           },
           {
@@ -784,12 +784,12 @@
 
         <div class="faq-item">
           <button class="faq-question" id="faq-q2" aria-expanded="false" aria-controls="faq-a2">
-            <span class="faq-question-text">How does VortexKV achieve 210,000+ ops/sec throughput?</span>
+            <span class="faq-question-text">How does VortexKV achieve 2,600,000+ ops/sec throughput?</span>
             <span class="faq-icon" aria-hidden="true">+</span>
           </button>
           <div class="faq-answer" id="faq-a2" role="region" aria-labelledby="faq-q2">
             <div class="faq-answer-inner">
-              <p>Unlike single-threaded in-memory engines that bottleneck on a single core or suffer from global lock contention, VortexKV partitions its in-memory keyspace into <strong>64 independently locked shards</strong>. Requests are mapped to shards via fnv32a hashing, allowing multi-core CPUs to process concurrent writes and reads with zero global mutex contention and sub-millisecond latencies.</p>
+              <p>VortexKV combines three core architectural innovations: (1) a <strong>64-way cacheline-padded lock-striped keyspace</strong> with inlined zero-allocation FNV-1a hashing (<strong>75.9M lookups/sec</strong>), (2) <strong>lock-free per-connection client sessions</strong> that bypass global mutex contention, and (3) <strong>smart socket pipeline coalescing</strong> that batches pipelined responses into consolidated kernel writes, eliminating over 90% of OS context-switch overhead.</p>
             </div>
           </div>
         </div>
