@@ -53,7 +53,7 @@ case "$OS" in
         ;;
 esac
 
-VERSION="v1.0.0"
+VERSION="v1.0.1"
 TAR_NAME="vortexkv-${VERSION}-${OS}-${ARCH}.tar.gz"
 DOWNLOAD_URL="https://github.com/GargAnshu9468/vortexkv/releases/download/${VERSION}/${TAR_NAME}"
 
