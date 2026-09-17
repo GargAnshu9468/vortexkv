@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"strconv"
 	"sync/atomic"
-	"syscall"
 
 	"github.com/GargAnshu9468/vortexkv/internal/engine"
 )
@@ -49,7 +48,6 @@ func HijackToNetConn(fd int) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	_ = syscall.Close(fd)
 	return c, nil
 }
 
