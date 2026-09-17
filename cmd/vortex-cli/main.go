@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vortexkv/vortexkv/internal/cluster"
-	"github.com/vortexkv/vortexkv/internal/resp"
+	"github.com/GargAnshu9468/vortexkv/internal/cluster"
+	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
 func main() {

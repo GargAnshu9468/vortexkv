@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vortexkv/vortexkv/internal/persistence"
-	"github.com/vortexkv/vortexkv/internal/resp"
+	"github.com/GargAnshu9468/vortexkv/internal/persistence"
+	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
 func TestRDBEngineE2E(t *testing.T) {

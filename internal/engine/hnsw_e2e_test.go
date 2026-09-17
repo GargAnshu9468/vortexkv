@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/vortexkv/vortexkv/internal/persistence"
-	"github.com/vortexkv/vortexkv/internal/resp"
+	"github.com/GargAnshu9468/vortexkv/internal/persistence"
+	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
 func TestHNSWEngineE2E(t *testing.T) {

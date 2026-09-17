@@ -13,7 +13,7 @@ import (
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/vortexkv/vortexkv/internal/resp"
+	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
 // DefaultWasmTimeout limits execution duration of a Wasm call

@@ -1,4 +1,4 @@
-module github.com/vortexkv/vortexkv
+module github.com/GargAnshu9468/vortexkv
 
 go 1.23
 

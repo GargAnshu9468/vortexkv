@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/vortexkv/vortexkv/internal/datastruct"
+	"github.com/GargAnshu9468/vortexkv/internal/datastruct"
 )
 
 const (

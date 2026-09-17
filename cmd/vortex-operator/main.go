@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/vortexkv/vortexkv/internal/operator"
+	"github.com/GargAnshu9468/vortexkv/internal/operator"
 )
 
 const version = "1.0.0"

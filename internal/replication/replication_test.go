@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vortexkv/vortexkv/internal/resp"
+	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
 func TestReplicationLifecycleAndSync(t *testing.T) {

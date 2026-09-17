@@ -3,7 +3,7 @@ package operator
 import (
 	"fmt"
 
-	"github.com/vortexkv/vortexkv/internal/cluster"
+	"github.com/GargAnshu9468/vortexkv/internal/cluster"
 )
 
 // Controller orchestrates the lifecycle of VortexKV distributed clusters on Kubernetes.

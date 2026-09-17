@@ -11,7 +11,7 @@ import (
 	"time"
 
 	lua "github.com/yuin/gopher-lua"
-	"github.com/vortexkv/vortexkv/internal/resp"
+	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
 // DefaultLuaTimeout defines maximum execution duration before terminating a script

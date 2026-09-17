@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vortexkv/vortexkv/internal/cluster"
+	"github.com/GargAnshu9468/vortexkv/internal/cluster"
 )
 
 func TestCalculateTotalPods(t *testing.T) {

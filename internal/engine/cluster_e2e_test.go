@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vortexkv/vortexkv/internal/cluster"
-	"github.com/vortexkv/vortexkv/internal/persistence"
-	"github.com/vortexkv/vortexkv/internal/resp"
+	"github.com/GargAnshu9468/vortexkv/internal/cluster"
+	"github.com/GargAnshu9468/vortexkv/internal/persistence"
+	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
 func TestClusterEngineE2E(t *testing.T) {

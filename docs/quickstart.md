@@ -27,7 +27,7 @@ docker run -d \
 ### Option C: Compile from Source
 Prerequisites: Go 1.21+ installed.
 ```bash
-git clone https://github.com/vortexkv/vortexkv.git
+git clone https://github.com/GargAnshu9468/vortexkv.git
 cd vortexkv
 make build
 ```

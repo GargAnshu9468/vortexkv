@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vortexkv/vortexkv/internal/engine"
-	"github.com/vortexkv/vortexkv/internal/resp"
+	"github.com/GargAnshu9468/vortexkv/internal/engine"
+	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
 func TestMasterReplicaE2E(t *testing.T) {
