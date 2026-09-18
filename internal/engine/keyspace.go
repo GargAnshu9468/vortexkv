@@ -455,13 +455,23 @@ func (ks *Keyspace) PTTL(key string) int64 {
 }
 
 func (ks *Keyspace) Persist(key string) bool {
-	entry, ok := ks.Get(key)
-	if !ok || entry.ExpiresAt == 0 {
-		return false
-	}
 	shard := ks.getShard(key)
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
+
+	now := time.Now().UnixMilli()
+	entry, exists := shard.entries[key]
+	if !exists {
+		return false
+	}
+	if entry.IsExpired(now) {
+		delete(shard.entries, key)
+		ks.keyCount.Add(-1)
+		return false
+	}
+	if entry.ExpiresAt == 0 {
+		return false
+	}
 	entry.ExpiresAt = 0
 	return true
 }
