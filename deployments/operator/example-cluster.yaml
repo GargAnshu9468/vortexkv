@@ -6,7 +6,7 @@ metadata:
 spec:
   masters: 3
   replicasPerMaster: 1
-  image: "garganshu9468/vortexkv:latest"
+  image: "ianshugarg/vortexkv:latest"
   requirepass: "vortex_k8s_secret_2026"
   maxmemory: "2gb"
   storage:

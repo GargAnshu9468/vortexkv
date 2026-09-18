@@ -128,7 +128,7 @@ func TestManifestGeneration(t *testing.T) {
 		Spec: VortexClusterSpec{
 			Masters:           3,
 			ReplicasPerMaster: 1,
-			Image:             "garganshu9468/vortexkv:latest",
+			Image:             "ianshugarg/vortexkv:latest",
 			RequirePass:       "secret123",
 			MaxMemory:         "4gb",
 			Storage: StorageSpec{

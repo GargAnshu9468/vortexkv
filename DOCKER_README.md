@@ -8,8 +8,8 @@
 </p>
 
 <p align="center">
-  <a href="https://hub.docker.com/r/garganshu9468/vortexkv"><img src="https://img.shields.io/docker/pulls/garganshu9468/vortexkv?style=flat-square&color=00ffcc" alt="Docker Pulls"></a>
-  <a href="https://hub.docker.com/r/garganshu9468/vortexkv"><img src="https://img.shields.io/docker/image-size/garganshu9468/vortexkv/latest?style=flat-square&color=7928ca" alt="Image Size"></a>
+  <a href="https://hub.docker.com/r/ianshugarg/vortexkv"><img src="https://img.shields.io/docker/pulls/ianshugarg/vortexkv?style=flat-square&color=00ffcc" alt="Docker Pulls"></a>
+  <a href="https://hub.docker.com/r/ianshugarg/vortexkv"><img src="https://img.shields.io/docker/image-size/ianshugarg/vortexkv/latest?style=flat-square&color=7928ca" alt="Image Size"></a>
   <a href="https://github.com/GargAnshu9468/vortexkv/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="GitHub License"></a>
   <img src="https://img.shields.io/badge/platform-linux%2Famd64%20%7C%20linux%2Farm64-ff007f?style=flat-square" alt="Multi-Arch">
   <img src="https://img.shields.io/badge/vulnerabilities-0_detected-brightgreen?style=flat-square" alt="0 CVEs">
@@ -35,7 +35,7 @@ docker run -d \
   -p 7379:7379 \
   -p 7380:7380 \
   -v vortex_data:/data \
-  garganshu9468/vortexkv:latest
+  ianshugarg/vortexkv:latest
 ```
 
 ### Accessing the Ports:
@@ -54,7 +54,7 @@ docker run -d \
   -p 7379:7379 \
   -p 7380:7380 \
   -v vortex_data:/data \
-  garganshu9468/vortexkv:latest \
+  ianshugarg/vortexkv:latest \
   -requirepass "vortex_secure_2026" \
   -maxmemory 2gb \
   -fsync everysec
@@ -76,7 +76,7 @@ version: '3.8'
 
 services:
   vortexkv:
-    image: garganshu9468/vortexkv:latest
+    image: ianshugarg/vortexkv:latest
     container_name: vortexkv
     restart: unless-stopped
     ports:

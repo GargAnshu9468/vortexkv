@@ -19,7 +19,7 @@ docker run -d \
   -p 7379:7379 \
   -p 7380:7380 \
   -v vortex-data:/data \
-  garganshu9468/vortexkv:latest \
+  ianshugarg/vortexkv:latest \
   -requirepass "vortex_secure_2026" \
   -maxmemory 1gb
 ```

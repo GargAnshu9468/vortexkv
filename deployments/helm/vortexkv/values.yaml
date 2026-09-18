@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: garganshu9468/vortexkv
+  repository: ianshugarg/vortexkv
   pullPolicy: IfNotPresent
   tag: "latest"
 

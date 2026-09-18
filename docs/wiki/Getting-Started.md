@@ -18,7 +18,7 @@ Launch single container:
 ```bash
 docker run -d -p 7379:7379 -p 7380:7380 \
   -e VORTEX_REQUIREPASS="vortex_secure_2026" \
-  garganshu9468/vortexkv:latest
+  ianshugarg/vortexkv:latest
 ```
 
 Launch complete cluster with Prometheus & Grafana stack:
