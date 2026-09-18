@@ -48,7 +48,7 @@ fi
 # 3. Choose Benchmark Port (uses isolated 18379 to avoid standard 7379/17379 ports)
 BENCH_PORT=18379
 BENCH_WEB_PORT=18380
-BENCH_HOST="0.0.0.0"
+BENCH_HOST="127.0.0.1"
 
 # Clean up existing processes if any
 pkill -f "vortex-server.*-port ${BENCH_PORT}" 2>/dev/null || true
@@ -56,7 +56,7 @@ sleep 0.5
 
 # 4. Launch Isolated Server Daemon
 echo -e "${CYAN}⚡ Starting isolated VortexKV reactor instance on port ${BENCH_PORT}...${NC}"
-$BINARY -port ${BENCH_PORT} -web-port ${BENCH_WEB_PORT} -event-engine auto -aof "" -maxmemory 2gb > /dev/null 2>&1 &
+$BINARY -port ${BENCH_PORT} -web-port ${BENCH_WEB_PORT} -event-engine auto -aof "" -rdb "" -maxmemory 2gb > /dev/null 2>&1 &
 SERVER_PID=$!
 
 cleanup() {
