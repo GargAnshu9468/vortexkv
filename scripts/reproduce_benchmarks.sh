@@ -45,9 +45,9 @@ if [ ! -f "$BINARY" ]; then
     go build -ldflags="-s -w" -o ./bin/vortex-server ./cmd/vortex-server
 fi
 
-# 3. Choose Benchmark Port
-BENCH_PORT=17379
-BENCH_WEB_PORT=17380
+# 3. Choose Benchmark Port (uses isolated 18379 to avoid standard 7379/17379 ports)
+BENCH_PORT=18379
+BENCH_WEB_PORT=18380
 BENCH_HOST="0.0.0.0"
 
 # Clean up existing processes if any

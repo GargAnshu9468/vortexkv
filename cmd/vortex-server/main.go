@@ -27,10 +27,12 @@ const banner = `
    ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗    ██║  ██╗ ╚████╔╝ 
     ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝    ╚═╝  ╚═╝  ╚═══╝  \033[0m
   \033[38;2;138;43;226m» Next-Generation Hyper-Performance In-Memory Data Store & Studio «\033[0m
-  \033[38;2;57;255;20mVersion: 1.0.0-PROD  |  Protocol: RESP2/RESP3  |  Engine: Sharded Lock-Striped\033[0m
+  \033[38;2;57;255;20mVersion: 1.0.1  |  Protocol: RESP2/RESP3  |  Engine: Multi-Reactor Sharded\033[0m
 `
 
 func main() {
+	showVer := flag.Bool("version", false, "Print VortexKV version and exit")
+	showVerShort := flag.Bool("v", false, "Print VortexKV version and exit")
 	port := flag.Int("port", 7379, "Port for VortexKV RESP wire protocol listener (default: 7379)")
 	bind := flag.String("bind", "0.0.0.0", "Network address to bind VortexKV listener")
 	requirepass := flag.String("requirepass", "", "Password authentication for clients and Web Studio")
@@ -61,6 +63,11 @@ func main() {
 	eventWorkers := flag.Int("event-workers", 0, "Number of dedicated reactor worker loops (default: CPU cores)")
 	eventRingSize := flag.Int("event-ring-size", 256*1024, "Size of reactor connection ring buffers in bytes (default: 256KB)")
 	flag.Parse()
+
+	if *showVer || *showVerShort {
+		fmt.Println("VortexKV v1.0.1")
+		os.Exit(0)
+	}
 
 	fmt.Print(banner)
 

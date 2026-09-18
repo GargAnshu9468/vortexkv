@@ -15,12 +15,19 @@ import (
 )
 
 func main() {
+	showVer := flag.Bool("v", false, "Print vortex-cli version and exit")
+	showVerLong := flag.Bool("version", false, "Print vortex-cli version and exit")
 	host := flag.String("h", "127.0.0.1", "Server hostname")
 	port := flag.Int("p", 7379, "Server port (default: 7379)")
 	authPass := flag.String("a", "", "Password for authentication")
 	auto := flag.Bool("auto", false, "Execute cluster rebalance non-interactively without prompt")
 	dryRun := flag.Bool("dry-run", false, "Compute and display cluster rebalance plan without executing")
 	flag.Parse()
+
+	if *showVer || *showVerLong {
+		fmt.Println("vortex-cli v1.0.1")
+		os.Exit(0)
+	}
 
 	addr := net.JoinHostPort(*host, strconv.Itoa(*port))
 	conn, err := net.Dial("tcp", addr)

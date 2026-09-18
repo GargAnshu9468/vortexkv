@@ -14,7 +14,7 @@ COPY . .
 
 ARG TARGETOS
 ARG TARGETARCH
-ARG VERSION=1.0.0
+ARG VERSION=1.0.1
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 
@@ -26,7 +26,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -
 # ==============================================================================
 FROM gcr.io/distroless/static-debian12:nonroot
 
-ARG VERSION=1.0.0
+ARG VERSION=1.0.1
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 
@@ -39,7 +39,7 @@ ENV VORTEX_PORT=7379 \
     VORTEX_WEB_PORT=7380 \
     VORTEX_DATA_DIR=/data
 
-LABEL maintainer="Anshu Garg <a.garg9050@gmail.com>" \
+LABEL maintainer="Anshu Garg <a.kgarg9050@gmail.com>" \
       org.opencontainers.image.title="vortexkv" \
       org.opencontainers.image.description="Ultra high-performance in-memory key-value data engine with native AI vector search and Web Command Deck" \
       org.opencontainers.image.url="https://github.com/GargAnshu9468/vortexkv" \
