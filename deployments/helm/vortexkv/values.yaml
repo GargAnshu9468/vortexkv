@@ -1,9 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: vortexkv/vortex
+  repository: garganshu9468/vortexkv
   pullPolicy: IfNotPresent
-  tag: "1.0.0-PROD"
+  tag: "latest"
 
 ports:
   wire: 7379

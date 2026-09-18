@@ -145,7 +145,7 @@ func (c *Controller) GenerateStatefulSetManifest(vc *VortexCluster) string {
 	totalPods := CalculateTotalPods(&vc.Spec)
 	image := vc.Spec.Image
 	if image == "" {
-		image = "vortexkv/vortexkv:latest"
+		image = "garganshu9468/vortexkv:latest"
 	}
 	maxMem := vc.Spec.MaxMemory
 	if maxMem == "" {

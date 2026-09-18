@@ -12,7 +12,7 @@
   <a href="https://github.com/GargAnshu9468/vortexkv/discussions"><img src="https://img.shields.io/badge/Discussions-Join_Community-cyan?logo=github&style=flat-square" alt="GitHub Discussions"></a>
   <a href="https://github.com/GargAnshu9468/vortexkv/wiki"><img src="https://img.shields.io/badge/Wiki-Documentation-blue?logo=gitbook&style=flat-square" alt="Wiki Documentation"></a>
   <a href="https://garganshu9468.github.io/vortexkv/"><img src="https://img.shields.io/badge/Live_Demo-Interactive_Sandbox-00f3ff?style=flat-square" alt="Live Demo"></a>
-  <a href="https://hub.docker.com/r/ianshugarg/vortexkv"><img src="https://img.shields.io/docker/pulls/ianshugarg/vortexkv?style=flat-square&color=00ffcc" alt="Docker Pulls"></a>
+  <a href="https://hub.docker.com/r/garganshu9468/vortexkv"><img src="https://img.shields.io/docker/pulls/garganshu9468/vortexkv?style=flat-square&color=00ffcc" alt="Docker Pulls"></a>
   <a href="https://github.com/GargAnshu9468/vortexkv/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
 </p>
 

@@ -24,7 +24,7 @@ cat << 'EOF'
     ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝    ╚═╝  ╚═╝  ╚═══╝  
 EOF
 echo -e "${PURPLE}» Next-Gen Hyper-Performance In-Memory Data Store & Studio «${NC}"
-echo -e "${GREEN}Installing VortexKV v1.0.0-PROD...${NC}\n"
+echo -e "${GREEN}Installing VortexKV v1.0.1...${NC}\n"
 
 # 1. OS & Architecture Detection
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"

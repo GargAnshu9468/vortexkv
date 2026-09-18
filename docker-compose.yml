@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: vortexkv/vortex:1.0.0-PROD
+    image: garganshu9468/vortexkv:latest
     container_name: vortexkv-core
     restart: unless-stopped
     ports:

@@ -40,7 +40,7 @@ spec:
                   description: "Number of replica nodes provisioned per master shard"
                 image:
                   type: string
-                  default: "vortexkv/vortexkv:latest"
+                  default: "garganshu9468/vortexkv:latest"
                   description: "Container image tag for VortexKV server"
                 requirepass:
                   type: string
