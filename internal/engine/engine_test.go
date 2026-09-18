@@ -1,7 +1,10 @@
 package engine
 
 import (
+	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -219,6 +222,90 @@ func TestClientSessionCleanup(t *testing.T) {
 
 	if exists {
 		t.Fatal("Expected client session to be deleted after ClearClientSession")
+	}
+}
+
+func TestAtomicConcurrentCommands(t *testing.T) {
+	eng, err := NewEngine("", "")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer eng.Close()
+
+	// 1. Concurrently test INCR: 500 goroutines incrementing the exact same key
+	const numGoroutines = 500
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			client := fmt.Sprintf("client-%d", id)
+			eng.ExecuteCommand(client, []string{"INCR", "shared_counter"})
+		}(i)
+	}
+	wg.Wait()
+
+	res := eng.ExecuteCommand("verify", []string{"GET", "shared_counter"})
+	if string(res.Bulk) != fmt.Sprintf("%d", numGoroutines) {
+		t.Fatalf("Expected shared_counter to be %d, got %s", numGoroutines, string(res.Bulk))
+	}
+
+	// 2. Concurrently test SETNX: 100 goroutines trying to acquire a lock
+	const lockClients = 100
+	var successCount atomic.Int64
+	var lockWg sync.WaitGroup
+	lockWg.Add(lockClients)
+
+	for i := 0; i < lockClients; i++ {
+		go func(id int) {
+			defer lockWg.Done()
+			client := fmt.Sprintf("lock-client-%d", id)
+			resp := eng.ExecuteCommand(client, []string{"SETNX", "distributed_lock", client})
+			if resp.Num == 1 {
+				successCount.Add(1)
+			}
+		}(i)
+	}
+	lockWg.Wait()
+
+	if successCount.Load() != 1 {
+		t.Fatalf("Expected exactly 1 client to acquire SETNX lock, got %d", successCount.Load())
+	}
+
+	// 3. Concurrently test APPEND
+	var appendWg sync.WaitGroup
+	const appendClients = 50
+	appendWg.Add(appendClients)
+	for i := 0; i < appendClients; i++ {
+		go func(id int) {
+			defer appendWg.Done()
+			eng.ExecuteCommand("c", []string{"APPEND", "append_log", "x"})
+		}(i)
+	}
+	appendWg.Wait()
+
+	lenRes := eng.ExecuteCommand("verify", []string{"STRLEN", "append_log"})
+	if lenRes.Num != appendClients {
+		t.Fatalf("Expected STRLEN %d, got %d", appendClients, lenRes.Num)
+	}
+
+	// 4. Concurrently test ZADD on the same sorted set
+	var zaddWg sync.WaitGroup
+	const zaddClients = 100
+	zaddWg.Add(zaddClients)
+	for i := 0; i < zaddClients; i++ {
+		go func(id int) {
+			defer zaddWg.Done()
+			member := fmt.Sprintf("member-%d", id)
+			eng.ExecuteCommand("c", []string{"ZADD", "leaderboard", fmt.Sprintf("%d", id*10), member})
+		}(i)
+	}
+	zaddWg.Wait()
+
+	zcardRes := eng.ExecuteCommand("verify", []string{"ZCARD", "leaderboard"})
+	if zcardRes.Num != zaddClients {
+		t.Fatalf("Expected ZCARD %d, got %d", zaddClients, zcardRes.Num)
 	}
 }
 

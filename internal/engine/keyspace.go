@@ -164,6 +164,156 @@ func (ks *Keyspace) Set(key string, entry *Entry) {
 	shard.entries[key] = entry
 }
 
+// SetNX atomically sets the key only if it does not already exist.
+// Returns true if key was set, false if key already exists.
+func (ks *Keyspace) SetNX(key string, entry *Entry) bool {
+	shard := ks.getShard(key)
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	now := time.Now().UnixMilli()
+	if existing, exists := shard.entries[key]; exists {
+		if existing.IsExpired(now) {
+			delete(shard.entries, key)
+			ks.keyCount.Add(-1)
+		} else {
+			return false
+		}
+	}
+
+	entry.UpdatedAt = now
+	atomic.StoreInt64(&entry.LastAccessedAt, now)
+	shard.entries[key] = entry
+	ks.keyCount.Add(1)
+	return true
+}
+
+// IncrBy atomically increments/decrements a key's integer string by delta under shard write lock.
+func (ks *Keyspace) IncrBy(key string, delta int64) (int64, error) {
+	shard := ks.getShard(key)
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	now := time.Now().UnixMilli()
+	entry, exists := shard.entries[key]
+	if exists && entry.IsExpired(now) {
+		delete(shard.entries, key)
+		ks.keyCount.Add(-1)
+		exists = false
+		entry = nil
+	}
+
+	var current int64 = 0
+	if exists {
+		if entry.Type != TypeString {
+			return 0, fmt.Errorf("WRONGTYPE Operation against a key holding the wrong kind of value")
+		}
+		strVal, ok := entry.Value.(string)
+		if !ok {
+			return 0, fmt.Errorf("ERR value is not an integer or out of range")
+		}
+		var err error
+		current, err = strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("ERR value is not an integer or out of range")
+		}
+	}
+
+	newVal := current + delta
+	newStr := strconv.FormatInt(newVal, 10)
+	if exists {
+		entry.Value = newStr
+		entry.UpdatedAt = now
+		atomic.StoreInt64(&entry.LastAccessedAt, now)
+	} else {
+		newEntry := &Entry{
+			Type:           TypeString,
+			Value:          newStr,
+			UpdatedAt:      now,
+			LastAccessedAt: now,
+		}
+		shard.entries[key] = newEntry
+		ks.keyCount.Add(1)
+	}
+
+	return newVal, nil
+}
+
+// Append atomically appends a string to the value of a string key under shard write lock.
+func (ks *Keyspace) Append(key string, val string) (int64, error) {
+	shard := ks.getShard(key)
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	now := time.Now().UnixMilli()
+	entry, exists := shard.entries[key]
+	if exists && entry.IsExpired(now) {
+		delete(shard.entries, key)
+		ks.keyCount.Add(-1)
+		exists = false
+		entry = nil
+	}
+
+	if !exists {
+		newEntry := &Entry{
+			Type:           TypeString,
+			Value:          val,
+			UpdatedAt:      now,
+			LastAccessedAt: now,
+		}
+		shard.entries[key] = newEntry
+		ks.keyCount.Add(1)
+		return int64(len(val)), nil
+	}
+
+	if entry.Type != TypeString {
+		return 0, fmt.Errorf("WRONGTYPE Operation against a key holding the wrong kind of value")
+	}
+
+	strVal, ok := entry.Value.(string)
+	if !ok {
+		return 0, fmt.Errorf("WRONGTYPE Operation against a key holding the wrong kind of value")
+	}
+
+	newVal := strVal + val
+	entry.Value = newVal
+	entry.UpdatedAt = now
+	atomic.StoreInt64(&entry.LastAccessedAt, now)
+	return int64(len(newVal)), nil
+}
+
+// GetOrCreate atomically retrieves the entry or creates it under shard.mu.Lock().
+// This prevents race conditions when multiple concurrent clients create collection entries (hashes, lists, sets, zsets).
+func (ks *Keyspace) GetOrCreate(key string, entryType EntryType, creator func() any) (*Entry, bool) {
+	shard := ks.getShard(key)
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	now := time.Now().UnixMilli()
+	entry, exists := shard.entries[key]
+	if exists && entry.IsExpired(now) {
+		delete(shard.entries, key)
+		ks.keyCount.Add(-1)
+		exists = false
+		entry = nil
+	}
+
+	if !exists {
+		entry = &Entry{
+			Type:           entryType,
+			Value:          creator(),
+			UpdatedAt:      now,
+			LastAccessedAt: now,
+		}
+		shard.entries[key] = entry
+		ks.keyCount.Add(1)
+		return entry, true
+	}
+
+	atomic.StoreInt64(&entry.LastAccessedAt, now)
+	return entry, false
+}
+
 // EvictLRU samples keys across shards and evicts the least recently accessed keys
 func (ks *Keyspace) EvictLRU(targetCount int) int64 {
 	if targetCount <= 0 {
@@ -255,16 +405,22 @@ func (ks *Keyspace) Exists(keys ...string) int64 {
 }
 
 func (ks *Keyspace) Expire(key string, ttlMillis int64) bool {
-	entry, ok := ks.Get(key)
-	if !ok {
-		return false
-	}
-
 	shard := ks.getShard(key)
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 
-	entry.ExpiresAt = time.Now().UnixMilli() + ttlMillis
+	now := time.Now().UnixMilli()
+	entry, exists := shard.entries[key]
+	if !exists {
+		return false
+	}
+	if entry.IsExpired(now) {
+		delete(shard.entries, key)
+		ks.keyCount.Add(-1)
+		return false
+	}
+
+	entry.ExpiresAt = now + ttlMillis
 	return true
 }
 

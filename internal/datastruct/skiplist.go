@@ -2,6 +2,7 @@ package datastruct
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -28,6 +29,7 @@ type SkipListNode struct {
 }
 
 type SkipList struct {
+	mu     sync.RWMutex
 	Header *SkipListNode
 	Tail   *SkipListNode
 	Length int64
@@ -59,10 +61,19 @@ func (sl *SkipList) randomLevel() int {
 	return lvl
 }
 
+func (sl *SkipList) Len() int64 {
+	sl.mu.RLock()
+	defer sl.mu.RUnlock()
+	return sl.Length
+}
+
 func (sl *SkipList) Insert(score float64, member string) *SkipListNode {
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
+
 	// If already present, remove old and insert new
 	if _, exists := sl.dict[member]; exists {
-		sl.Delete(member)
+		sl.deleteUnsafe(member)
 	}
 
 	var update [SkipListMaxLevel]*SkipListNode
@@ -130,6 +141,12 @@ func (sl *SkipList) Insert(score float64, member string) *SkipListNode {
 }
 
 func (sl *SkipList) Delete(member string) bool {
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
+	return sl.deleteUnsafe(member)
+}
+
+func (sl *SkipList) deleteUnsafe(member string) bool {
 	score, exists := sl.dict[member]
 	if !exists {
 		return false
@@ -173,11 +190,17 @@ func (sl *SkipList) Delete(member string) bool {
 }
 
 func (sl *SkipList) GetScore(member string) (float64, bool) {
+	sl.mu.RLock()
+	defer sl.mu.RUnlock()
+
 	score, ok := sl.dict[member]
 	return score, ok
 }
 
 func (sl *SkipList) GetRank(member string) int64 {
+	sl.mu.RLock()
+	defer sl.mu.RUnlock()
+
 	score, exists := sl.dict[member]
 	if !exists {
 		return -1
@@ -215,6 +238,9 @@ func (sl *SkipList) GetElementByRank(rank uint64) *SkipListNode {
 }
 
 func (sl *SkipList) Range(start, stop int64, reverse bool) []ScoredMember {
+	sl.mu.RLock()
+	defer sl.mu.RUnlock()
+
 	if sl.Length == 0 {
 		return nil
 	}

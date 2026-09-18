@@ -760,19 +760,11 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 		if len(args) < 2 {
 			return resp.Error("ERR wrong number of arguments for 'append' command"), false
 		}
-		entry, ok := e.Keyspace.Get(args[0])
-		var newVal string
-		if !ok {
-			newVal = args[1]
-			e.Keyspace.Set(args[0], &Entry{Type: TypeString, Value: newVal})
-		} else {
-			if entry.Type != TypeString {
-				return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-			}
-			newVal = entry.Value.(string) + args[1]
-			entry.Value = newVal
+		length, err := e.Keyspace.Append(args[0], args[1])
+		if err != nil {
+			return resp.Error(err.Error()), false
 		}
-		return resp.Integer(int64(len(newVal))), true
+		return resp.Integer(length), true
 
 	case "STRLEN":
 		if len(args) < 1 {
@@ -791,11 +783,10 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 		if len(args) < 2 {
 			return resp.Error("ERR wrong number of arguments for 'setnx' command"), false
 		}
-		if _, ok := e.Keyspace.Get(args[0]); ok {
-			return resp.Integer(0), false
+		if e.Keyspace.SetNX(args[0], &Entry{Type: TypeString, Value: args[1]}) {
+			return resp.Integer(1), true
 		}
-		e.Keyspace.Set(args[0], &Entry{Type: TypeString, Value: args[1]})
-		return resp.Integer(1), true
+		return resp.Integer(0), false
 
 	case "SETEX":
 		if len(args) < 3 {
@@ -1022,17 +1013,13 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 		if err != nil {
 			return resp.Error("ERR value is not an integer or out of range"), false
 		}
-		entry, ok := e.Keyspace.Get(args[0])
-		var h *datastruct.Hash
-		if !ok {
-			h = datastruct.NewHash()
-			e.Keyspace.Set(args[0], &Entry{Type: TypeHash, Value: h})
-		} else {
-			if entry.Type != TypeHash {
-				return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-			}
-			h = entry.Value.(*datastruct.Hash)
+		entry, _ := e.Keyspace.GetOrCreate(args[0], TypeHash, func() any {
+			return datastruct.NewHash()
+		})
+		if entry.Type != TypeHash {
+			return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
 		}
+		h := entry.Value.(*datastruct.Hash)
 		val, err := h.IncrBy(args[1], delta)
 		if err != nil {
 			return resp.Error("ERR hash value is not an integer"), false
@@ -1044,17 +1031,13 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 		if len(args) < 2 {
 			return resp.Error("ERR wrong number of arguments for 'lpush' command"), false
 		}
-		entry, ok := e.Keyspace.Get(args[0])
-		var l *datastruct.List
-		if !ok {
-			l = datastruct.NewList()
-			e.Keyspace.Set(args[0], &Entry{Type: TypeList, Value: l})
-		} else {
-			if entry.Type != TypeList {
-				return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-			}
-			l = entry.Value.(*datastruct.List)
+		entry, _ := e.Keyspace.GetOrCreate(args[0], TypeList, func() any {
+			return datastruct.NewList()
+		})
+		if entry.Type != TypeList {
+			return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
 		}
+		l := entry.Value.(*datastruct.List)
 		length := l.LPush(args[1:]...)
 		return resp.Integer(length), true
 
@@ -1062,17 +1045,13 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 		if len(args) < 2 {
 			return resp.Error("ERR wrong number of arguments for 'rpush' command"), false
 		}
-		entry, ok := e.Keyspace.Get(args[0])
-		var l *datastruct.List
-		if !ok {
-			l = datastruct.NewList()
-			e.Keyspace.Set(args[0], &Entry{Type: TypeList, Value: l})
-		} else {
-			if entry.Type != TypeList {
-				return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-			}
-			l = entry.Value.(*datastruct.List)
+		entry, _ := e.Keyspace.GetOrCreate(args[0], TypeList, func() any {
+			return datastruct.NewList()
+		})
+		if entry.Type != TypeList {
+			return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
 		}
+		l := entry.Value.(*datastruct.List)
 		length := l.RPush(args[1:]...)
 		return resp.Integer(length), true
 
@@ -1187,17 +1166,13 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 		if len(args) < 2 {
 			return resp.Error("ERR wrong number of arguments for 'sadd' command"), false
 		}
-		entry, ok := e.Keyspace.Get(args[0])
-		var s *datastruct.Set
-		if !ok {
-			s = datastruct.NewSet()
-			e.Keyspace.Set(args[0], &Entry{Type: TypeSet, Value: s})
-		} else {
-			if entry.Type != TypeSet {
-				return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-			}
-			s = entry.Value.(*datastruct.Set)
+		entry, _ := e.Keyspace.GetOrCreate(args[0], TypeSet, func() any {
+			return datastruct.NewSet()
+		})
+		if entry.Type != TypeSet {
+			return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
 		}
+		s := entry.Value.(*datastruct.Set)
 		added := s.Add(args[1:]...)
 		return resp.Integer(added), true
 
@@ -1476,27 +1451,10 @@ func (e *Engine) handleIncrBy(args []string, delta int64) (resp.Value, bool) {
 		return resp.Error("ERR wrong number of arguments for incr/decr command"), false
 	}
 	key := args[0]
-	entry, ok := e.Keyspace.Get(key)
-	var current int64 = 0
-	if ok {
-		if entry.Type != TypeString {
-			return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-		}
-		var err error
-		current, err = strconv.ParseInt(entry.Value.(string), 10, 64)
-		if err != nil {
-			return resp.Error("ERR value is not an integer or out of range"), false
-		}
+	newVal, err := e.Keyspace.IncrBy(key, delta)
+	if err != nil {
+		return resp.Error(err.Error()), false
 	}
-
-	newVal := current + delta
-	strVal := strconv.FormatInt(newVal, 10)
-	if ok {
-		entry.Value = strVal
-	} else {
-		e.Keyspace.Set(key, &Entry{Type: TypeString, Value: strVal})
-	}
-
 	return resp.Integer(newVal), true
 }
 
@@ -1505,17 +1463,13 @@ func (e *Engine) handleHSet(args []string) (resp.Value, bool) {
 		return resp.Error("ERR wrong number of arguments for 'hset' command"), false
 	}
 	key := args[0]
-	entry, ok := e.Keyspace.Get(key)
-	var h *datastruct.Hash
-	if !ok {
-		h = datastruct.NewHash()
-		e.Keyspace.Set(key, &Entry{Type: TypeHash, Value: h})
-	} else {
-		if entry.Type != TypeHash {
-			return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-		}
-		h = entry.Value.(*datastruct.Hash)
+	entry, _ := e.Keyspace.GetOrCreate(key, TypeHash, func() any {
+		return datastruct.NewHash()
+	})
+	if entry.Type != TypeHash {
+		return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
 	}
+	h := entry.Value.(*datastruct.Hash)
 
 	var addedCount int64
 	for i := 1; i < len(args); i += 2 {
@@ -1529,17 +1483,13 @@ func (e *Engine) handleHMSet(args []string) (resp.Value, bool) {
 		return resp.Error("ERR wrong number of arguments for 'hmset' command"), false
 	}
 	key := args[0]
-	entry, ok := e.Keyspace.Get(key)
-	var h *datastruct.Hash
-	if !ok {
-		h = datastruct.NewHash()
-		e.Keyspace.Set(key, &Entry{Type: TypeHash, Value: h})
-	} else {
-		if entry.Type != TypeHash {
-			return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-		}
-		h = entry.Value.(*datastruct.Hash)
+	entry, _ := e.Keyspace.GetOrCreate(key, TypeHash, func() any {
+		return datastruct.NewHash()
+	})
+	if entry.Type != TypeHash {
+		return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
 	}
+	h := entry.Value.(*datastruct.Hash)
 
 	kvs := make(map[string]string)
 	for i := 1; i < len(args); i += 2 {
@@ -1554,17 +1504,13 @@ func (e *Engine) handleZAdd(args []string) (resp.Value, bool) {
 		return resp.Error("ERR wrong number of arguments for 'zadd' command"), false
 	}
 	key := args[0]
-	entry, ok := e.Keyspace.Get(key)
-	var sl *datastruct.SkipList
-	if !ok {
-		sl = datastruct.NewSkipList()
-		e.Keyspace.Set(key, &Entry{Type: TypeZSet, Value: sl})
-	} else {
-		if entry.Type != TypeZSet {
-			return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
-		}
-		sl = entry.Value.(*datastruct.SkipList)
+	entry, _ := e.Keyspace.GetOrCreate(key, TypeZSet, func() any {
+		return datastruct.NewSkipList()
+	})
+	if entry.Type != TypeZSet {
+		return resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value"), false
 	}
+	sl := entry.Value.(*datastruct.SkipList)
 
 	var addedCount int64
 	for i := 1; i < len(args); i += 2 {
