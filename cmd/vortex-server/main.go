@@ -27,7 +27,7 @@ const banner = `
    ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗    ██║  ██╗ ╚████╔╝ 
     ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝    ╚═╝  ╚═╝  ╚═══╝  \033[0m
   \033[38;2;138;43;226m» Next-Generation Hyper-Performance In-Memory Data Store & Studio «\033[0m
-  \033[38;2;57;255;20mVersion: 1.0.1  |  Protocol: RESP2/RESP3  |  Engine: Multi-Reactor Sharded\033[0m
+  \033[38;2;57;255;20mVersion: 1.0.2  |  Protocol: RESP2/RESP3  |  Engine: Multi-Reactor Sharded\033[0m
 `
 
 func main() {
@@ -65,7 +65,7 @@ func main() {
 	flag.Parse()
 
 	if *showVer || *showVerShort {
-		fmt.Println("VortexKV v1.0.1")
+		fmt.Println("VortexKV v1.0.2")
 		os.Exit(0)
 	}
 

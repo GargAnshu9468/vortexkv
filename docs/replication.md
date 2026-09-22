@@ -42,7 +42,7 @@ When a replica connects to a master (via CLI flag or dynamic `REPLICAOF` command
 2. **`PING`**: Verifies socket liveness and network connectivity.
 3. **`REPLCONF listening-port <port>`**: Informs the master of the replica's advertised listening port.
 4. **`REPLCONF capa psync2`**: Advertises PSYNC2 capabilities.
-5. **`PSYNC ? -1`**: Initiates synchronization. The master responds with `+FULLRESYNC <replid> <offset>`, streams the entire active keyspace across all 64 shards, and adds the replica to its live streaming broadcast ring.
+5. **`PSYNC ? -1`**: Initiates synchronization. The master responds with `+FULLRESYNC <replid> <offset>`, streams the entire active keyspace across all 256 shards, and adds the replica to its live streaming broadcast ring.
 6. **Continuous Streaming**: The master streams all write commands in real-time as RESP arrays with sub-millisecond propagation latency.
 
 ---

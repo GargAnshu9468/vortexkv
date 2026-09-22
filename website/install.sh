@@ -24,7 +24,7 @@ cat << 'EOF'
     ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝    ╚═╝  ╚═╝  ╚═══╝  
 EOF
 echo -e "${PURPLE}» Next-Gen Hyper-Performance In-Memory Data Store & Studio «${NC}"
-echo -e "${GREEN}Installing VortexKV v1.0.1...${NC}\n"
+echo -e "${GREEN}Installing VortexKV v1.0.2...${NC}\n"
 
 # 1. OS & Architecture Detection
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -53,7 +53,7 @@ case "$OS" in
         ;;
 esac
 
-VERSION="v1.0.1"
+VERSION="v1.0.2"
 TAR_NAME="vortexkv-${VERSION}-${OS}-${ARCH}.tar.gz"
 DOWNLOAD_URL="https://github.com/GargAnshu9468/vortexkv/releases/download/${VERSION}/${TAR_NAME}"
 

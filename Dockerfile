@@ -14,7 +14,7 @@ COPY . .
 
 ARG TARGETOS
 ARG TARGETARCH
-ARG VERSION=1.0.1
+ARG VERSION=1.0.2
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 
@@ -26,7 +26,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -
 # ==============================================================================
 FROM gcr.io/distroless/static-debian12:nonroot
 
-ARG VERSION=1.0.1
+ARG VERSION=1.0.2
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 

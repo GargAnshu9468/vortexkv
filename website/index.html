@@ -36,7 +36,7 @@
   <!-- OpenGraph / Facebook Social Meta -->
   <meta property="og:site_name" content="VortexKV">
   <meta property="og:title" content="VortexKV — Hyper-Performance Redis Alternative & In-Memory AI Vector Engine">
-  <meta property="og:description" content="Drop-in Redis replacement with 6,870,000+ ops/sec pipelined throughput, 210,000+ ops/sec direct concurrency, hardware-accelerated kqueue/epoll multi-reactor engine, lock-striped 64-shard Go concurrency, Redis Streams, cluster gossip bus, Lua 5.1, Wasm runtime, native AI vector cosine search, K8s operator, and visual web studio.">
+  <meta property="og:description" content="Drop-in Redis replacement with 6,870,000+ ops/sec pipelined throughput, 210,000+ ops/sec direct concurrency, hardware-accelerated kqueue/epoll multi-reactor engine, lock-striped 256-shard Go concurrency, Redis Streams, cluster gossip bus, Lua 5.1, Wasm runtime, native AI vector cosine search, K8s operator, and visual web studio.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://garganshu9468.github.io/vortexkv/">
   <meta property="og:image" content="https://garganshu9468.github.io/vortexkv/assets/vortexkv_logo.png">
@@ -73,13 +73,13 @@
         "@id": "https://garganshu9468.github.io/vortexkv/#software",
         "name": "VortexKV",
         "headline": "Hyper-Performance Redis Alternative & In-Memory AI Vector Engine",
-        "description": "Drop-in Redis alternative with 6,870,000+ ops/sec pipelined throughput, 210,000+ ops/sec direct concurrency, hardware-accelerated kqueue/epoll multi-reactor engine, lock-striped 64-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.",
+        "description": "Drop-in Redis alternative with 6,870,000+ ops/sec pipelined throughput, 210,000+ ops/sec direct concurrency, hardware-accelerated kqueue/epoll multi-reactor engine, lock-striped 256-shard concurrency, Redis Streams, cluster gossip bus, Lua 5.1 scripts, Wasm functions, K8s operator, native AI vector search, and an embedded cyberpunk visual command deck.",
         "operatingSystem": "Linux, macOS, Windows, Docker, Kubernetes",
         "applicationCategory": "DeveloperApplication",
         "applicationSubCategory": "Database Management System",
         "url": "https://garganshu9468.github.io/vortexkv/",
         "downloadUrl": "https://github.com/GargAnshu9468/vortexkv/releases",
-        "softwareVersion": "1.0.1",
+        "softwareVersion": "1.0.2",
         "license": "https://opensource.org/licenses/MIT",
         "programmingLanguage": ["Go", "Lua", "WebAssembly"],
         "codeRepository": "https://github.com/GargAnshu9468/vortexkv",
@@ -162,7 +162,7 @@
             "name": "What is VortexKV and how does it replace Redis?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "VortexKV is an ultra-fast, open-source in-memory key-value database and AI vector engine written in Go. It delivers wire-level protocol compatibility with Redis, meaning you can connect directly using standard client libraries (redis-cli, redis-py, ioredis, go-redis, Jedis) without rewriting application logic, while leveraging modern 64-shard lock-striped concurrency and an integrated visual command deck."
+              "text": "VortexKV is an ultra-fast, open-source in-memory key-value database and AI vector engine written in Go. It delivers wire-level protocol compatibility with Redis, meaning you can connect directly using standard client libraries (redis-cli, redis-py, ioredis, go-redis, Jedis) without rewriting application logic, while leveraging modern 256-shard lock-striped concurrency and an integrated visual command deck."
             }
           },
           {
@@ -170,7 +170,7 @@
             "name": "How does VortexKV achieve 6,870,000+ ops/sec throughput?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "VortexKV achieves world-record velocity through four core architectural pillars: (1) a hardware-accelerated Multi-Reactor engine with pinned OS workers on kqueue and epoll, (2) zero-allocation circular ring buffers and inlined zero-copy RESP serializers (435M ops/s), (3) a 64-way cacheline-padded lock-striped keyspace with zero-alloc FNV-1a hashing (75.9M lookups/s), and (4) smart socket pipeline coalescing that collapses pipelined responses into single consolidated kernel writes."
+              "text": "VortexKV achieves world-record velocity through four core architectural pillars: (1) a hardware-accelerated Multi-Reactor engine with non-blocking cooperative event workers on kqueue and epoll, (2) zero-allocation circular ring buffers and inlined zero-copy RESP serializers (435M ops/s), (3) a 256-way cacheline-padded lock-striped keyspace with zero-alloc FNV-1a hashing (75.9M lookups/s), and (4) smart socket pipeline coalescing that collapses pipelined responses into single consolidated kernel writes."
             }
           },
           {
@@ -668,14 +668,14 @@
             <div class="roadmap-phase">HARDWARE MULTI-REACTOR</div>
             <h4 class="roadmap-card-title">kqueue & epoll Event Loops</h4>
             <div class="roadmap-stat">6,870,000+ ops/sec</div>
-            <p class="roadmap-text">Dedicated event-driven reactor engine with OS-thread pinned sub-workers and contiguous zero-alloc circular ring buffers, maximizing L1/L2 CPU cache residency.</p>
+            <p class="roadmap-text">Dedicated event-driven reactor engine with cooperative non-blocking worker loops and contiguous zero-alloc circular ring buffers, maximizing L1/L2 CPU cache residency.</p>
           </div>
 
           <div class="roadmap-card card-active">
             <div class="roadmap-phase">CONCURRENT KEYSPACE</div>
-            <h4 class="roadmap-card-title">64-Shard Mutex Striping</h4>
+            <h4 class="roadmap-card-title">256-Shard Mutex Striping</h4>
             <div class="roadmap-stat">75,900,000+ ops/sec</div>
-            <p class="roadmap-text">Eliminates global single-thread bottlenecks with 64 independent cacheline-padded hash shards and zero-alloc inlined FNV-1a hashing running at 27 ns/op.</p>
+            <p class="roadmap-text">Eliminates global single-thread bottlenecks with 256 independent cacheline-padded hash shards and zero-alloc inlined FNV-1a hashing running at 27 ns/op.</p>
           </div>
 
           <div class="roadmap-card card-active">
@@ -803,7 +803,7 @@
           </button>
           <div class="faq-answer" id="faq-a1" role="region" aria-labelledby="faq-q1">
             <div class="faq-answer-inner">
-              <p>VortexKV is an ultra-fast, open-source in-memory key-value database and AI vector engine written in Go. It delivers wire-level protocol compatibility with Redis, meaning you can connect directly using standard client libraries (<code>redis-cli</code>, <code>redis-py</code>, <code>ioredis</code>, <code>go-redis</code>, <code>Jedis</code>) without rewriting application logic, while leveraging modern 64-shard lock-striped concurrency and an integrated visual command deck.</p>
+              <p>VortexKV is an ultra-fast, open-source in-memory key-value database and AI vector engine written in Go. It delivers wire-level protocol compatibility with Redis, meaning you can connect directly using standard client libraries (<code>redis-cli</code>, <code>redis-py</code>, <code>ioredis</code>, <code>go-redis</code>, <code>Jedis</code>) without rewriting application logic, while leveraging modern 256-shard lock-striped concurrency and an integrated visual command deck.</p>
             </div>
           </div>
         </div>
@@ -815,7 +815,7 @@
           </button>
           <div class="faq-answer" id="faq-a2" role="region" aria-labelledby="faq-q2">
             <div class="faq-answer-inner">
-              <p>VortexKV achieves world-record velocity through four core architectural pillars: (1) a <strong>hardware-accelerated Multi-Reactor engine</strong> with OS thread pinning on <code>kqueue</code> (macOS) and <code>epoll</code> (Linux), (2) <strong>zero-allocation circular ring buffers</strong> and inlined zero-copy wire serializers (<strong>435M ops/sec</strong>), (3) a <strong>64-way cacheline-padded lock-striped keyspace</strong> with zero-alloc FNV-1a hashing (<strong>75.9M lookups/sec</strong>), and (4) <strong>smart socket pipeline coalescing</strong> that batches hundreds of pipelined responses into single consolidated kernel writes.</p>
+              <p>VortexKV achieves world-record velocity through four core architectural pillars: (1) a <strong>hardware-accelerated Multi-Reactor engine</strong> with non-blocking cooperative event loops on <code>kqueue</code> (macOS) and <code>epoll</code> (Linux), (2) <strong>zero-allocation circular ring buffers</strong> and inlined zero-copy wire serializers (<strong>435M ops/sec</strong>), (3) a <strong>256-way cacheline-padded lock-striped keyspace</strong> with zero-alloc FNV-1a hashing (<strong>75.9M lookups/sec</strong>), and (4) <strong>smart socket pipeline coalescing</strong> that batches hundreds of pipelined responses into single consolidated kernel writes.</p>
             </div>
           </div>
         </div>

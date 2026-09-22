@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/vulnerabilities-0_detected-brightgreen?style=flat-square" alt="0 CVEs">
 </p>
 
-**VortexKV** is an ultra high-performance, next-generation in-memory key-value data engine engineered in pure Go. It delivers **`6,870,000+ ops/sec`** pipelined throughput (world record) and **`210,000+ ops/sec`** direct concurrency with **`111µs` p50 latency**, hardware-accelerated kqueue/epoll multi-reactor engine, 64 cacheline-padded lock-striped shards, smart socket write coalescing, native AI vector cosine search, Redis Streams, cluster gossip bus, embedded Lua 5.1, Wasm runtime, and an automated Kubernetes operator.
+**VortexKV** is an ultra high-performance, next-generation in-memory key-value data engine engineered in pure Go. It delivers **`6,870,000+ ops/sec`** pipelined throughput (world record) and **`210,000+ ops/sec`** direct concurrency with **`111µs` p50 latency**, hardware-accelerated kqueue/epoll multi-reactor engine, 256 cacheline-padded lock-striped shards, smart socket write coalescing, native AI vector cosine search, Redis Streams, cluster gossip bus, embedded Lua 5.1, Wasm runtime, and an automated Kubernetes operator.
 
 It is **drop-in wire compatible** with standard Redis clients (`redis-cli`, Jedis, go-redis, redis-py, ioredis) and ships with an embedded cyberpunk Web Studio Command Deck.
 
@@ -130,12 +130,12 @@ Access the cyberpunk dashboard at **`http://localhost:7380`**:
 | `-web-port` | `7380` | Port for Visual Studio Web Dashboard & SSE |
 | `-requirepass` | `""` | Password authentication for clients and Web Studio |
 | `-maxmemory` | `"0"` | Memory limit (e.g. `512mb`, `2gb`, `0` for unlimited) |
-| `-aof` | `"vortex.aof"`| Append-Only File path for durability (in `/data`) |
+| `-aof` | `""` | Append-Only File path for durability (in `/data`, leave empty to disable) |
 | `-fsync` | `"everysec"` | AOF fsync policy (`always`, `everysec`, `no`) |
-| `-rdb` | `"dump.rdb"` | Binary snapshot file path |
+| `-rdb` | `""` | Binary snapshot file path (leave empty to disable) |
 | `-cluster-enabled` | `false` | Enable distributed gossip cluster mode |
 | `-event-engine` | `"auto"` | Network engine (`auto`: epoll/kqueue, `reactor`, `std`) |
-| `-event-workers` | `N` | Number of dedicated pinned event-reactor worker threads |
+| `-event-workers` | `N` | Number of dedicated reactor worker loops (default: CPU cores) |
 
 ---
 

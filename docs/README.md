@@ -14,7 +14,7 @@ Welcome to the official **VortexKV** technical documentation. VortexKV is an ult
 | [🛡️ **Production Hardening**](./production-hardening.md) | Essential Linux kernel parameters, memory limits, TLS certificates, systemd services, and backup policies. |
 | [🔁 **Replication & High Availability**](./replication.md) | Master-replica asynchronous replication (PSYNC, REPLCONF), failover, read scaling, and clustering. |
 | [🌊 **Streams & Consumer Groups**](./streams.md) | Distributed event streaming, consumer groups, PEL tracking, and zero-CPU blocking queues. |
-| [⚙️ **Architecture Internals**](./architecture.md) | Deep dive into lock-striped sharding (64 shards), sub-millisecond TTL timing wheels, and the RESP parser. |
+| [⚙️ **Architecture Internals**](./architecture.md) | Deep dive into lock-striped sharding (256 shards), sub-millisecond TTL timing wheels, and the RESP parser. |
 
 ---
 
