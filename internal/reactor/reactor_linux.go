@@ -319,7 +319,7 @@ func (w *EpollWorker) handleRead(conn *Connection) {
 		conn.InRing.AdvanceRead(consumed)
 
 		eng := w.server.cfg.Engine
-		isSimpleSession := (conn.Session == nil || !conn.Session.InMulti) &&
+		isSimpleSession := (conn.Session == nil || (!conn.Session.InMulti && len(conn.Session.WatchedKeys) == 0)) &&
 			eng.Password == "" &&
 			(eng.Cluster == nil || !eng.Cluster.Enabled) &&
 			(eng.Replication == nil || !eng.Replication.ReadOnly)
@@ -351,8 +351,8 @@ func (w *EpollWorker) handleRead(conn *Connection) {
 			continue
 		}
 
-		// Fast-path: SET key val (without extra flags, when AOF and replication are inactive)
-		if len(args) == 3 && (args[0] == "SET" || args[0] == "set") && isSimpleSession && eng.AOF == nil && eng.Replication == nil {
+		// Fast-path: SET key val (without extra flags, when AOF/repl inactive, no memory limit, no active watches)
+		if len(args) == 3 && (args[0] == "SET" || args[0] == "set") && isSimpleSession && eng.AOF == nil && eng.Replication == nil && eng.MaxMemory == 0 && eng.WatchedCount() == 0 {
 			eng.Keyspace.Set(args[1], &engine.Entry{Type: engine.TypeString, Value: args[2]})
 			conn.OutBuf = append(conn.OutBuf, respOK...)
 			eng.Telemetry.RecordCommand("SET", 0, args)

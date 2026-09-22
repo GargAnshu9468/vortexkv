@@ -25,6 +25,8 @@ type ClientSession struct {
 	Username      string
 	InMulti       bool
 	TxQueue       [][]string
+	WatchedKeys   map[string]bool
+	TxAborted     bool
 }
 
 type Engine struct {
@@ -43,6 +45,7 @@ type Engine struct {
 	MaxMemory         uint64 // in bytes; 0 = unlimited
 	EvictionPolicy    string // "allkeys-lru", "volatile-lru", "noeviction"
 	memCheckCounter   atomic.Uint64
+	watchedCount      atomic.Int32
 
 	muClients      sync.RWMutex
 	clientSessions map[string]*ClientSession
@@ -235,7 +238,12 @@ func (e *Engine) GetClientSession(connID string) *ClientSession {
 
 func (e *Engine) ClearClientSession(connID string) {
 	e.muClients.Lock()
-	delete(e.clientSessions, connID)
+	if sess, ok := e.clientSessions[connID]; ok {
+		if len(sess.WatchedKeys) > 0 {
+			e.watchedCount.Add(-1)
+		}
+		delete(e.clientSessions, connID)
+	}
 	e.muClients.Unlock()
 }
 
@@ -327,6 +335,13 @@ func (e *Engine) ExecuteCommandWithSession(session *ClientSession, connID string
 		} else if cmdName == "DISCARD" {
 			session.InMulti = false
 			session.TxQueue = nil
+			e.muClients.Lock()
+			if len(session.WatchedKeys) > 0 {
+				e.watchedCount.Add(-1)
+				session.WatchedKeys = nil
+			}
+			session.TxAborted = false
+			e.muClients.Unlock()
 			return resp.SimpleString("OK")
 		} else if cmdName == "MULTI" {
 			return resp.Error("ERR MULTI calls can not be nested")
@@ -337,6 +352,12 @@ func (e *Engine) ExecuteCommandWithSession(session *ClientSession, connID string
 	}
 
 	val, isWrite := e.dispatch(connID, cmdName, args[1:])
+	if isWrite && e.watchedCount.Load() > 0 {
+		keys := extractCommandKeys(cmdName, args[1:])
+		for _, k := range keys {
+			e.touchWatchedKey(k)
+		}
+	}
 
 	// MaxMemory enforcement for mutating commands: sampled every 2048 writes to avoid ReadMemStats STW pause
 	if isWrite && e.MaxMemory > 0 && (e.memCheckCounter.Add(1)&2047 == 0) {
@@ -375,10 +396,40 @@ func (e *Engine) ExecuteCommandWithSession(session *ClientSession, connID string
 	return val
 }
 
+func (e *Engine) touchWatchedKey(key string) {
+	if e.watchedCount.Load() <= 0 {
+		return
+	}
+	e.muClients.Lock()
+	defer e.muClients.Unlock()
+	for _, sess := range e.clientSessions {
+		if sess != nil && sess.WatchedKeys != nil && sess.WatchedKeys[key] {
+			sess.TxAborted = true
+		}
+	}
+}
+
+func (e *Engine) WatchedCount() int32 {
+	return e.watchedCount.Load()
+}
+
 func (e *Engine) executeTransaction(connID string, session *ClientSession) resp.Value {
 	queue := session.TxQueue
 	session.InMulti = false
 	session.TxQueue = nil
+
+	e.muClients.Lock()
+	if len(session.WatchedKeys) > 0 {
+		e.watchedCount.Add(-1)
+		session.WatchedKeys = nil
+	}
+	aborted := session.TxAborted
+	session.TxAborted = false
+	e.muClients.Unlock()
+
+	if aborted {
+		return resp.Null()
+	}
 
 	results := make([]resp.Value, len(queue))
 	for i, cmdArgs := range queue {
@@ -393,6 +444,12 @@ func (e *Engine) executeTransaction(connID string, session *ClientSession) resp.
 		}
 		if isWrite && e.Replication != nil && connID != "replica_stream" {
 			e.Replication.Broadcast(cmdArgs)
+		}
+		if isWrite && e.watchedCount.Load() > 0 {
+			keys := extractCommandKeys(cName, cmdArgs[1:])
+			for _, k := range keys {
+				e.touchWatchedKey(k)
+			}
 		}
 	}
 	return resp.Array(results)
@@ -464,6 +521,36 @@ func (e *Engine) dispatch(connID string, cmd string, args []string) (resp.Value,
 
 	case "DISCARD":
 		return resp.Error("ERR DISCARD without MULTI"), false
+
+	case "WATCH":
+		session := e.GetClientSession(connID)
+		if session.InMulti {
+			return resp.Error("ERR WATCH inside MULTI is not allowed"), false
+		}
+		if len(args) < 1 {
+			return resp.Error("ERR wrong number of arguments for 'watch' command"), false
+		}
+		e.muClients.Lock()
+		if len(session.WatchedKeys) == 0 {
+			e.watchedCount.Add(1)
+			session.WatchedKeys = make(map[string]bool)
+		}
+		for _, k := range args {
+			session.WatchedKeys[k] = true
+		}
+		e.muClients.Unlock()
+		return resp.SimpleString("OK"), false
+
+	case "UNWATCH":
+		session := e.GetClientSession(connID)
+		e.muClients.Lock()
+		if len(session.WatchedKeys) > 0 {
+			e.watchedCount.Add(-1)
+			session.WatchedKeys = nil
+		}
+		session.TxAborted = false
+		e.muClients.Unlock()
+		return resp.SimpleString("OK"), false
 
 	case "BGREWRITEAOF":
 		return resp.SimpleString("Background append only file rewriting started"), false
@@ -2496,7 +2583,7 @@ func extractCommandKeys(cmd string, args []string) []string {
 	}
 	switch cmd {
 	case "AUTH", "PING", "ECHO", "QUIT", "COMMAND", "CLIENT", "SELECT", "INFO", "DBSIZE",
-		"TIME", "SLOWLOG", "MULTI", "EXEC", "DISCARD", "BGREWRITEAOF", "ACL",
+		"TIME", "SLOWLOG", "MULTI", "EXEC", "DISCARD", "WATCH", "UNWATCH", "BGREWRITEAOF", "ACL",
 		"FLUSHDB", "FLUSHALL", "CONFIG", "SHUTDOWN", "PUBSUB", "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE",
 		"SAVE", "BGSAVE", "LASTSAVE", "CLUSTER", "REPLICAOF", "SLAVEOF", "REPLCONF", "ROLE", "SCRIPT", "WASM":
 		return nil

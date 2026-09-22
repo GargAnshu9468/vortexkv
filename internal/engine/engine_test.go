@@ -172,6 +172,44 @@ func TestTransactionsMultiExec(t *testing.T) {
 	if !checkRes.Null {
 		t.Fatalf("Expected discarded key to be nil, got: %v", checkRes)
 	}
+
+	// 5. Test WATCH - transaction aborts when watched key is modified by another client
+	eng.ExecuteCommand("clientA", []string{"SET", "balance", "100"})
+	watchRes := eng.ExecuteCommand("clientA", []string{"WATCH", "balance"})
+	if watchRes.Str != "OK" {
+		t.Fatalf("Expected OK from WATCH, got: %v", watchRes)
+	}
+
+	// Client B modifies the watched key
+	eng.ExecuteCommand("clientB", []string{"SET", "balance", "200"})
+
+	// Client A attempts MULTI / EXEC -> should abort and return Null
+	eng.ExecuteCommand("clientA", []string{"MULTI"})
+	eng.ExecuteCommand("clientA", []string{"SET", "balance", "300"})
+	abortedExec := eng.ExecuteCommand("clientA", []string{"EXEC"})
+	if !abortedExec.Null {
+		t.Fatalf("Expected EXEC to abort and return nil, got: %v", abortedExec)
+	}
+
+	// Verify balance is still 200 (not 300)
+	balRes := eng.ExecuteCommand("clientA", []string{"GET", "balance"})
+	if string(balRes.Bulk) != "200" {
+		t.Fatalf("Expected balance to be 200, got: %q", string(balRes.Bulk))
+	}
+
+	// 6. Test UNWATCH - transaction succeeds when UNWATCH is called
+	eng.ExecuteCommand("clientA", []string{"WATCH", "balance"})
+	eng.ExecuteCommand("clientB", []string{"SET", "balance", "250"})
+	unwatchRes := eng.ExecuteCommand("clientA", []string{"UNWATCH"})
+	if unwatchRes.Str != "OK" {
+		t.Fatalf("Expected OK from UNWATCH, got: %v", unwatchRes)
+	}
+	eng.ExecuteCommand("clientA", []string{"MULTI"})
+	eng.ExecuteCommand("clientA", []string{"SET", "balance", "350"})
+	okExec := eng.ExecuteCommand("clientA", []string{"EXEC"})
+	if okExec.Type != resp.ArrayPrefix || len(okExec.Array) != 1 {
+		t.Fatalf("Expected successful EXEC after UNWATCH, got: %v", okExec)
+	}
 }
 
 func TestCredentialRedactionInSlowLog(t *testing.T) {
