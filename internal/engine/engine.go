@@ -346,7 +346,9 @@ func (e *Engine) ExecuteCommandWithSession(session *ClientSession, connID string
 		} else if cmdName == "MULTI" {
 			return resp.Error("ERR MULTI calls can not be nested")
 		} else {
-			session.TxQueue = append(session.TxQueue, args)
+			cmdCopy := make([]string, len(args))
+			copy(cmdCopy, args)
+			session.TxQueue = append(session.TxQueue, cmdCopy)
 			return resp.SimpleString("QUEUED")
 		}
 	}
