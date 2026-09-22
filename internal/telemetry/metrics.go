@@ -95,6 +95,15 @@ func (t *Telemetry) DecrConnections() {
 	t.activeConnections.Add(-1)
 }
 
+// AddTotalCommands increments total commands by n in a single atomic operation,
+// avoiding cross-core cache line contention in multi-worker event loops.
+func (t *Telemetry) AddTotalCommands(n int64) {
+	if n <= 0 {
+		return
+	}
+	t.totalCommands.Add(n)
+}
+
 func (t *Telemetry) RecordCommand(cmdName string, durationMicro int64, args []string) {
 	total := t.totalCommands.Add(1)
 

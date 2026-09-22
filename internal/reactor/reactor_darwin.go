@@ -34,6 +34,7 @@ type KqueueWorker struct {
 	muConns  sync.RWMutex
 	readBuf  []byte
 	cmdArgs  []string
+	localOps int64
 	stopChan chan struct{}
 }
 
@@ -277,13 +278,86 @@ func (w *KqueueWorker) run(wg *sync.WaitGroup) {
 	}
 }
 
+func (w *KqueueWorker) incOps(eng *engine.Engine) {
+	w.localOps++
+	if w.localOps >= 64 {
+		eng.Telemetry.AddTotalCommands(w.localOps)
+		w.localOps = 0
+	}
+}
+
+func (w *KqueueWorker) flushOps(eng *engine.Engine) {
+	if w.localOps > 0 {
+		eng.Telemetry.AddTotalCommands(w.localOps)
+		w.localOps = 0
+	}
+}
+
+func (w *KqueueWorker) executeCommand(conn *Connection, args []string) {
+	eng := w.server.cfg.Engine
+	isSimpleSession := (conn.Session == nil || (!conn.Session.InMulti && len(conn.Session.WatchedKeys) == 0)) &&
+		eng.Password == "" &&
+		(eng.Cluster == nil || !eng.Cluster.Enabled) &&
+		(eng.Replication == nil || !eng.Replication.ReadOnly)
+
+	// Fast-path: PING
+	if len(args) == 1 && (args[0] == "PING" || args[0] == "ping") {
+		conn.OutBuf = append(conn.OutBuf, respPONG...)
+		w.incOps(eng)
+		return
+	}
+
+	// Fast-path: GET
+	if len(args) == 2 && (args[0] == "GET" || args[0] == "get") && isSimpleSession {
+		ent, found := eng.Keyspace.Get(args[1])
+		if !found {
+			conn.OutBuf = append(conn.OutBuf, respNull...)
+		} else if ent.Type == engine.TypeString {
+			if s, ok := ent.Value.(string); ok {
+				conn.OutBuf = AppendBulkString(conn.OutBuf, s)
+			} else {
+				res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
+				conn.OutBuf = AppendValue(conn.OutBuf, res)
+			}
+		} else {
+			res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
+			conn.OutBuf = AppendValue(conn.OutBuf, res)
+		}
+		w.incOps(eng)
+		return
+	}
+
+	// Fast-path: SET key val (without extra flags, when AOF/repl inactive, no memory limit, no active watches)
+	if len(args) == 3 && (args[0] == "SET" || args[0] == "set") && isSimpleSession && eng.AOF == nil && eng.Replication == nil && eng.MaxMemory == 0 && eng.WatchedCount() == 0 {
+		eng.Keyspace.Set(args[1], &engine.Entry{Type: engine.TypeString, Value: args[2]})
+		conn.OutBuf = append(conn.OutBuf, respOK...)
+		w.incOps(eng)
+		return
+	}
+
+	cmdUpper := engine.ToUpperFast(args[0])
+	if cmdUpper == "QUIT" {
+		conn.OutBuf = append(conn.OutBuf, respOK...)
+		w.flushWrite(conn)
+		w.closeConn(conn)
+		return
+	}
+
+	// Execute against multi-core sharded keyspace
+	res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
+	conn.OutBuf = AppendValue(conn.OutBuf, res)
+	w.incOps(eng)
+}
+
 func (w *KqueueWorker) handleRead(conn *Connection) {
-	// Read all available bytes from non-blocking socket
-	for {
+	eng := w.server.cfg.Engine
+
+	// ZERO-COPY FAST PATH: When InRing is empty, attempt to read directly and parse
+	if conn.InRing.IsEmpty() {
 		n, err := syscall.Read(conn.Fd, w.readBuf)
 		if err != nil {
 			if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
-				break
+				return
 			}
 			w.closeConn(conn)
 			return
@@ -293,13 +367,79 @@ func (w *KqueueWorker) handleRead(conn *Connection) {
 			return
 		}
 
-		_, _ = conn.InRing.Write(w.readBuf[:n])
-		if n < len(w.readBuf) {
-			break
+		buf := w.readBuf[:n]
+		args, consumed, err := ParseCommandInto(buf, w.cmdArgs)
+		if err != nil {
+			conn.OutBuf = append(conn.OutBuf, []byte("-ERR protocol error\r\n")...)
+			w.flushWrite(conn)
+			w.closeConn(conn)
+			return
+		}
+
+		if consumed > 0 && args != nil {
+			w.executeCommand(conn, args)
+
+			if consumed == n {
+				// Perfect single command! Zero memory copy into ring buffer.
+				w.flushOps(eng)
+				if len(conn.OutBuf) > 0 {
+					w.flushWrite(conn)
+				}
+				return
+			}
+
+			// Pipelined or multiple commands in w.readBuf
+			buf = buf[consumed:]
+			for len(buf) > 0 {
+				args, consumed, err = ParseCommandInto(buf, w.cmdArgs)
+				if err != nil {
+					conn.OutBuf = append(conn.OutBuf, []byte("-ERR protocol error\r\n")...)
+					w.flushWrite(conn)
+					w.closeConn(conn)
+					return
+				}
+				if consumed == 0 || args == nil {
+					// Incomplete trailing bytes, buffer into InRing
+					_, _ = conn.InRing.Write(buf)
+					break
+				}
+				w.executeCommand(conn, args)
+				buf = buf[consumed:]
+			}
+
+			w.flushOps(eng)
+			if len(conn.OutBuf) > 0 {
+				w.flushWrite(conn)
+			}
+			return
+		}
+
+		// Incomplete initial command, write to InRing and wait for more data
+		_, _ = conn.InRing.Write(buf)
+	} else {
+		// InRing has existing buffered data: read all available bytes into InRing
+		for {
+			n, err := syscall.Read(conn.Fd, w.readBuf)
+			if err != nil {
+				if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
+					break
+				}
+				w.closeConn(conn)
+				return
+			}
+			if n == 0 {
+				w.closeConn(conn)
+				return
+			}
+
+			_, _ = conn.InRing.Write(w.readBuf[:n])
+			if n < len(w.readBuf) {
+				break
+			}
 		}
 	}
 
-	// Parse and execute all commands present in InRing
+	// Drain and execute all commands present in InRing
 	for {
 		data := conn.InRing.Peek()
 		if conn.InRing.Len() > len(data) {
@@ -321,64 +461,14 @@ func (w *KqueueWorker) handleRead(conn *Connection) {
 		}
 
 		conn.InRing.AdvanceRead(consumed)
-
-		eng := w.server.cfg.Engine
-		isSimpleSession := (conn.Session == nil || (!conn.Session.InMulti && len(conn.Session.WatchedKeys) == 0)) &&
-			eng.Password == "" &&
-			(eng.Cluster == nil || !eng.Cluster.Enabled) &&
-			(eng.Replication == nil || !eng.Replication.ReadOnly)
-
-		// Fast-path: PING
-		if len(args) == 1 && (args[0] == "PING" || args[0] == "ping") {
-			conn.OutBuf = append(conn.OutBuf, respPONG...)
-			eng.Telemetry.RecordCommand("PING", 0, args)
-			continue
-		}
-
-		// Fast-path: GET
-		if len(args) == 2 && (args[0] == "GET" || args[0] == "get") && isSimpleSession {
-			ent, found := eng.Keyspace.Get(args[1])
-			if !found {
-				conn.OutBuf = append(conn.OutBuf, respNull...)
-			} else if ent.Type == engine.TypeString {
-				if s, ok := ent.Value.(string); ok {
-					conn.OutBuf = AppendBulkString(conn.OutBuf, s)
-				} else {
-					res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
-					conn.OutBuf = AppendValue(conn.OutBuf, res)
-				}
-			} else {
-				res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
-				conn.OutBuf = AppendValue(conn.OutBuf, res)
-			}
-			eng.Telemetry.RecordCommand("GET", 0, args)
-			continue
-		}
-
-		// Fast-path: SET key val (without extra flags, when AOF/repl inactive, no memory limit, no active watches)
-		if len(args) == 3 && (args[0] == "SET" || args[0] == "set") && isSimpleSession && eng.AOF == nil && eng.Replication == nil && eng.MaxMemory == 0 && eng.WatchedCount() == 0 {
-			eng.Keyspace.Set(args[1], &engine.Entry{Type: engine.TypeString, Value: args[2]})
-			conn.OutBuf = append(conn.OutBuf, respOK...)
-			eng.Telemetry.RecordCommand("SET", 0, args)
-			continue
-		}
-
-		cmdUpper := engine.ToUpperFast(args[0])
-		if cmdUpper == "QUIT" {
-			conn.OutBuf = append(conn.OutBuf, respOK...)
-			w.flushWrite(conn)
-			w.closeConn(conn)
-			return
-		}
-
-		// Execute against multi-core sharded keyspace
-		res := w.server.cfg.Engine.ExecuteCommandWithSession(conn.Session, conn.ID, args)
-		conn.OutBuf = AppendValue(conn.OutBuf, res)
+		w.executeCommand(conn, args)
 	}
 
 	if conn.InRing.IsEmpty() {
 		conn.InRing.Reset()
 	}
+
+	w.flushOps(eng)
 
 	// Flush pipelined batch output
 	if len(conn.OutBuf) > 0 {
