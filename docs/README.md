@@ -24,7 +24,7 @@ Welcome to the official **VortexKV** technical documentation. VortexKV is an ult
   - Wire Protocol: **`7379`** (instead of standard Redis 6379).
   - Cyberpunk Web Studio & Telemetry: **`7380`**.
 - **Drop-In Wire Compatibility**: Implements standard RESP2/RESP3. Works seamlessly with `redis-cli`, ORMs, and official client drivers.
-- **Concurrent Sharded Keyspace & Multi-Reactor Engine**: Hardware-accelerated kqueue/epoll multi-reactor engine and 64 cacheline-padded mutex-striped shards, delivering **>6,870,000 ops/sec** pipelined throughput (world record) and **>210,000 ops/sec** direct concurrency with ~111µs latency.
+- **Concurrent Sharded Keyspace & Multi-Reactor Engine**: Hardware-accelerated kqueue/epoll multi-reactor engine and 256 cacheline-padded mutex-striped shards, delivering **>6,870,000 ops/sec** pipelined throughput (world record) and **>210,000 ops/sec** direct concurrency with ~111µs latency.
 - **Embedded Visual Studio**: Single self-contained binary embeds a rich, zero-dependency visual command deck featuring an interactive 2D/3D keyspace galaxy, slowlog stream, and ACL manager.
 - **Native AI Vector Search**: High-dimensional vector indexing and nearest-neighbor search (`VADD`, `VSEARCH`, `VSIM`) built directly into the storage engine.
 - **Cloud-Native Observability**: Standard Prometheus exporter (`GET /metrics`) and Kubernetes liveness/readiness probes (`GET /healthz`).

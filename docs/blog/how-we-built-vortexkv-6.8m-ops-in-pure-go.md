@@ -138,13 +138,13 @@ When processing pipelined workloads, **up to 128 responses are consolidated into
 
 ---
 
-## 4. 64 Mutex-Striped Shards with Cacheline Padding
+## 4. 256 Mutex-Striped Shards with Cacheline Padding
 
 Standard Redis is single-threaded to avoid lock contention. But to utilize all 16 or 32 cores on modern hardware, you need concurrency.
 
 If you protect your keyspace with a global `sync.RWMutex`, CPU cores fight over the same memory cache line, causing devastating lock convoying.
 
-VortexKV splits the global keyspace into **64 independent, lock-striped shards**:
+VortexKV splits the global keyspace into **256 independent, lock-striped shards**:
 
 ```go
 type KeyspaceShard struct {
@@ -155,7 +155,7 @@ type KeyspaceShard struct {
 }
 
 type Engine struct {
-    shards [64]*KeyspaceShard
+    shards [256]*KeyspaceShard
 }
 ```
 

@@ -6,7 +6,7 @@ This document details the internal design and concurrency model that allow Vorte
 
 ## 1. Concurrency Model: Cacheline-Padded Lock-Striped Sharding
 
-Unlike single-threaded in-memory stores that bottleneck on a single CPU core, VortexKV implements a **64-way lock-striped concurrent keyspace** with 64-byte CPU cacheline padding:
+Unlike single-threaded in-memory stores that bottleneck on a single CPU core, VortexKV implements a **256-way lock-striped concurrent keyspace** with 64-byte CPU cacheline padding:
 
 ```
                        Incoming Commands (Wire Port 7379)
@@ -15,11 +15,11 @@ Unlike single-threaded in-memory stores that bottleneck on a single CPU core, Vo
                                        │
            ┌───────────┬───────────┬───┴───────┬───────────┐
            ▼           ▼           ▼           ▼           ▼
-       [Shard 0]   [Shard 1]   [Shard 2]  ... [Shard 62]  [Shard 63]
-       [Mutex 0]   [Mutex 1]   [Mutex 2]  ... [Mutex 62]  [Mutex 63]
+       [Shard 0]   [Shard 1]   [Shard 2]  ... [Shard 254] [Shard 255]
+       [Mutex 0]   [Mutex 1]   [Mutex 2]  ... [Mutex 254] [Mutex 255]
 ```
 
-- Each key is hashed deterministically into one of 64 independent shards using an inlined, zero-allocation 64-bit FNV-1a algorithm running at **27 nanoseconds per lookup** (**75,900,000 ops/sec**).
+- Each key is hashed deterministically into one of 256 independent shards using an inlined, zero-allocation 64-bit FNV-1a algorithm running at **27 nanoseconds per lookup** (**75,900,000 ops/sec**).
 - Each shard owns an independent `sync.RWMutex` padded with `_ [64]byte` to prevent L1/L2 CPU cache false sharing across physical cores.
 - Read operations (`GET`, `HGET`) acquire read locks on only the designated shard, allowing hundreds of concurrent readers across multiple CPU cores without lock contention.
 - Writes (`SET`, `DEL`) only acquire an exclusive lock on the single target shard.

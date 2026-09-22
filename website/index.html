@@ -386,7 +386,7 @@
 
           <div class="bar-group">
             <div class="bar-label-row">
-              <span class="bar-name">⚡ VortexKV (64-Shard Striped)</span>
+              <span class="bar-name">⚡ VortexKV (256-Shard Striped)</span>
               <span class="bar-val">210,970 ops/s</span>
             </div>
             <div class="bar-track">
@@ -563,7 +563,7 @@
             <tbody>
               <tr>
                 <td class="feature-label"><strong>Core Architecture</strong></td>
-                <td class="cell-vortex"><strong>64-Shard Lock-Striped Concurrency</strong></td>
+                <td class="cell-vortex"><strong>256-Shard Lock-Striped Concurrency</strong></td>
                 <td>Single-Threaded Event Loop + I/O Threads</td>
                 <td>Thread-per-core (Fibers + io_uring)</td>
                 <td>Tsavorite Cache + Vectorized Network</td>
@@ -701,8 +701,8 @@
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">🏎️</div>
-          <h3 class="feature-title">64 Shards Lock-Striping</h3>
-          <p class="feature-desc">Eliminates the single-thread global mutex bottleneck. Each key hashes to one of 64 independent shards for parallel CPU core utilization.</p>
+          <h3 class="feature-title">256 Shards Lock-Striping</h3>
+          <p class="feature-desc">Eliminates the single-thread global mutex bottleneck. Each key hashes to one of 256 independent shards for parallel CPU core utilization.</p>
         </div>
 
         <div class="feature-card">

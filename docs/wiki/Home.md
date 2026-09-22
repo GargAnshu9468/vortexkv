@@ -1,6 +1,6 @@
 # 🌌 Welcome to the VortexKV Wiki
 
-> **VortexKV** (*Vector-Optimized Redis-Compatible Throughput Extreme Key-Value Store*) is a next-generation, cyberpunk in-memory data store engineered from scratch in pure Go. It delivers **6,870,000+ ops/sec** pipelined throughput (with peak bursts up to **9,411,764 ops/sec**) and **210,000+ ops/sec** direct concurrency with **~111µs p50 latency**, hardware-accelerated kqueue/epoll event reactor, 64 cacheline-padded lock-striped shards, smart socket write coalescing, native HNSW AI vector graphs, Redis Streams with consumer groups, an autonomous cluster gossip bus, dual scripting (Lua 5.1 & Wasm), and an embedded visual command deck.
+> **VortexKV** (*Vector-Optimized Redis-Compatible Throughput Extreme Key-Value Store*) is a next-generation, cyberpunk in-memory data store engineered from scratch in pure Go. It delivers **6,870,000+ ops/sec** pipelined throughput (with peak bursts up to **9,411,764 ops/sec**) and **210,000+ ops/sec** direct concurrency with **~111µs p50 latency**, hardware-accelerated kqueue/epoll event reactor, 256 cacheline-padded lock-striped shards, smart socket write coalescing, native HNSW AI vector graphs, Redis Streams with consumer groups, an autonomous cluster gossip bus, dual scripting (Lua 5.1 & Wasm), and an embedded visual command deck.
 
 ---
 
@@ -9,7 +9,7 @@
 | Topic | Description | Link |
 | :--- | :--- | :--- |
 | **🚀 Getting Started** | Installation via cURL, Docker, Helm, or source | [[Getting-Started]] |
-| **🏎️ Architecture & Core** | 64 lock-striped shards, memory models, zero-alloc timing wheel | [[Architecture-and-Internals]] |
+| **🏎️ Architecture & Core** | 256 lock-striped shards, memory models, zero-alloc timing wheel | [[Architecture-and-Internals]] |
 | **🧠 Native AI Vector Search** | HNSW skip-graphs, Cosine/Euclidean/Dot similarity (`VSEARCH`) | [[AI-Vector-Search]] |
 | **🌊 Streams & Consumer Groups** | Event streaming, Pending Entries List (PEL), and worker pools | [[Streams-and-Consumer-Groups]] |
 | **📡 Cluster & Gossip Protocol** | 16,384 hash slots, Port 17379 binary bus, autonomous failover | [[Cluster-and-Gossip-Protocol]] |
@@ -39,7 +39,7 @@
             ┌──────────────────────────┴──────────────────────────┐
             ▼                                                     ▼
 ┌───────────────────────┐                             ┌───────────────────────┐
-│ 64-Shard Lock Striped │                             │ Embedded Visual Deck  │
+│256-Shard Lock Striped │                             │ Embedded Visual Deck  │
 │  Concurrent Keyspace  │                             │   (HTTP Port 7380)    │
 └───────────┬───────────┘                             └───────────────────────┘
             │
@@ -51,7 +51,7 @@
 ```
 
 ### 1. Breaking the Global Mutex Bottleneck
-Standard Redis processes all commands through a single thread to avoid concurrency issues, limiting throughput to a single CPU core. VortexKV pairs a **hardware-accelerated Multi-Reactor engine (kqueue/epoll)** with **64 independent cacheline-padded lock-striped shards** and **smart socket write coalescing**, allowing high-concurrency workloads to utilize all CPU cores simultaneously and batch pipelined responses into consolidated kernel writes (**6.8M+ ops/sec** peak, **2.7M+ ops/sec** GET).
+Standard Redis processes all commands through a single thread to avoid concurrency issues, limiting throughput to a single CPU core. VortexKV pairs a **hardware-accelerated Multi-Reactor engine (kqueue/epoll)** with **256 independent cacheline-padded lock-striped shards** and **smart socket write coalescing**, allowing high-concurrency workloads to utilize all CPU cores simultaneously and batch pipelined responses into consolidated kernel writes (**6.8M+ ops/sec** peak, **2.7M+ ops/sec** GET).
 
 ### 2. Dedicated Non-Conflicting Ports
 VortexKV is engineered for seamless coexistence with existing database infrastructure:

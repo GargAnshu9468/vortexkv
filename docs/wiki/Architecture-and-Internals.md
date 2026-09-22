@@ -4,13 +4,13 @@ This document covers the internal design, concurrency patterns, and data structu
 
 ---
 
-## 1. Cacheline-Padded 64-Shard Lock Striping
+## 1. Cacheline-Padded 256-Shard Lock Striping
 
-To avoid global thread contention without compromising atomicity, VortexKV divides the entire database keyspace into 64 independent shards with CPU cacheline padding:
+To avoid global thread contention without compromising atomicity, VortexKV divides the entire database keyspace into 256 independent shards with CPU cacheline padding:
 
 ```go
 type Keyspace struct {
-    shards [64]*Shard
+    shards [256]*Shard
 }
 
 type Shard struct {
