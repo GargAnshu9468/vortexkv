@@ -14,8 +14,26 @@ import (
 )
 
 const (
-	NumShards = 64
+	NumShards = 256
 )
+
+var cachedClockMilli atomic.Int64
+
+func init() {
+	cachedClockMilli.Store(time.Now().UnixMilli())
+	go func() {
+		ticker := time.NewTicker(1 * time.Millisecond)
+		defer ticker.Stop()
+		for t := range ticker.C {
+			cachedClockMilli.Store(t.UnixMilli())
+		}
+	}()
+}
+
+// FastNowMilli returns the cached millisecond timestamp avoiding system call overhead in tight hotpaths
+func FastNowMilli() int64 {
+	return cachedClockMilli.Load()
+}
 
 type EntryType string
 
@@ -80,7 +98,7 @@ func fnv1a(s string) uint64 {
 }
 
 func (ks *Keyspace) getShard(key string) *Shard {
-	return ks.shards[fnv1a(key)%uint64(NumShards)]
+	return ks.shards[fnv1a(key)&(NumShards-1)]
 }
 
 // activeExpirationReaper implements Redis-style active probabilistic key expiration
@@ -153,15 +171,15 @@ func (ks *Keyspace) Get(key string) (*Entry, bool) {
 func (ks *Keyspace) Set(key string, entry *Entry) {
 	shard := ks.getShard(key)
 	shard.mu.Lock()
-	defer shard.mu.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := FastNowMilli()
 	entry.UpdatedAt = now
 	atomic.StoreInt64(&entry.LastAccessedAt, now)
 	if _, exists := shard.entries[key]; !exists {
 		ks.keyCount.Add(1)
 	}
 	shard.entries[key] = entry
+	shard.mu.Unlock()
 }
 
 // SetNX atomically sets the key only if it does not already exist.

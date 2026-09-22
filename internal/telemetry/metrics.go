@@ -38,11 +38,10 @@ type Telemetry struct {
 	lastSecondCommands atomic.Int64
 	opsPerSecond       atomic.Int64
 
-	muLatency          sync.Mutex
-	latencySamples     []int64 // circular sample buffer of last 1000 command latencies in microseconds
+	latencySamples     [latencySamplesCount]int64
+	latencyIdx         atomic.Uint64
 
-	muCommands         sync.RWMutex
-	commandsCount      map[string]int64
+	cmdCounters        sync.Map // map[string]*atomic.Int64
 
 	muSlowLog          sync.RWMutex
 	slowLogs           []SlowLogEntry
@@ -56,11 +55,11 @@ type Telemetry struct {
 	eventListenerCount atomic.Int32
 }
 
+const latencySamplesCount = 1024
+
 func NewTelemetry() *Telemetry {
 	t := &Telemetry{
 		startTime:          time.Now(),
-		latencySamples:     make([]int64, 0, 1000),
-		commandsCount:      make(map[string]int64),
 		slowLogs:           make([]SlowLogEntry, 0, 128),
 		slowThresholdMicro: 10000, // 10ms default
 		listeners:          make(map[chan MetricsSnapshot]struct{}),
@@ -78,12 +77,12 @@ func (t *Telemetry) rateCalculatorLoop() {
 	for range ticker.C {
 		currentTotal := t.totalCommands.Load()
 		lastTotal := t.lastSecondCommands.Swap(currentTotal)
-		ops := currentTotal - lastTotal
-		t.opsPerSecond.Store(ops)
-
-		// Broadcast snapshot to listeners
-		snap := t.GetSnapshot(0)
-		t.broadcastSnapshot(snap)
+		diff := currentTotal - lastTotal
+		if diff < 0 {
+			diff = 0
+		}
+		t.opsPerSecond.Store(diff)
+		t.broadcastSnapshot(t.GetSnapshot(0))
 	}
 }
 
@@ -97,22 +96,27 @@ func (t *Telemetry) DecrConnections() {
 }
 
 func (t *Telemetry) RecordCommand(cmdName string, durationMicro int64, args []string) {
-	t.totalCommands.Add(1)
+	total := t.totalCommands.Add(1)
 
-	// Update command count
-	t.muCommands.Lock()
-	t.commandsCount[cmdName]++
-	t.muCommands.Unlock()
-
-	// Record latency sample
-	t.muLatency.Lock()
-	if len(t.latencySamples) >= 1000 {
-		t.latencySamples = t.latencySamples[1:]
+	// Sample latency into lock-free circular ring
+	if total&31 == 0 {
+		idx := t.latencyIdx.Add(1) % latencySamplesCount
+		atomic.StoreInt64(&t.latencySamples[idx], durationMicro)
 	}
-	t.latencySamples = append(t.latencySamples, durationMicro)
-	t.muLatency.Unlock()
 
-	// SlowLog check
+	// Update per-command counter lock-free
+	if val, ok := t.cmdCounters.Load(cmdName); ok {
+		val.(*atomic.Int64).Add(1)
+	} else {
+		ctr := new(atomic.Int64)
+		ctr.Store(1)
+		actual, loaded := t.cmdCounters.LoadOrStore(cmdName, ctr)
+		if loaded {
+			actual.(*atomic.Int64).Add(1)
+		}
+	}
+
+	// SlowLog check (only triggered when command is >= threshold, default 10ms)
 	if durationMicro >= t.slowThresholdMicro {
 		safeArgs := make([]string, len(args))
 		copy(safeArgs, args)
@@ -211,15 +215,18 @@ func (t *Telemetry) GetSnapshot(totalKeys int64) MetricsSnapshot {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	// Calculate latency percentiles
-	t.muLatency.Lock()
+	// Calculate latency percentiles from atomic sample ring
+	var sorted []int64
+	for i := 0; i < latencySamplesCount; i++ {
+		v := atomic.LoadInt64(&t.latencySamples[i])
+		if v > 0 {
+			sorted = append(sorted, v)
+		}
+	}
 	var avgLatency float64
 	var p99Latency float64
-	if len(t.latencySamples) > 0 {
-		sorted := make([]int64, len(t.latencySamples))
-		copy(sorted, t.latencySamples)
+	if len(sorted) > 0 {
 		sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
-
 		var sum int64
 		for _, v := range sorted {
 			sum += v
@@ -228,15 +235,13 @@ func (t *Telemetry) GetSnapshot(totalKeys int64) MetricsSnapshot {
 		p99Idx := int(float64(len(sorted)-1) * 0.99)
 		p99Latency = float64(sorted[p99Idx])
 	}
-	t.muLatency.Unlock()
 
-	// Clone command counts
-	t.muCommands.RLock()
-	cmdCopy := make(map[string]int64, len(t.commandsCount))
-	for k, v := range t.commandsCount {
-		cmdCopy[k] = v
-	}
-	t.muCommands.RUnlock()
+	// Clone command counts lock-free
+	cmdCopy := make(map[string]int64)
+	t.cmdCounters.Range(func(key, value any) bool {
+		cmdCopy[key.(string)] = value.(*atomic.Int64).Load()
+		return true
+	})
 
 	// Clone recent slow logs
 	t.muSlowLog.RLock()

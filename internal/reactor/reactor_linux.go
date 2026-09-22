@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -225,8 +224,7 @@ func (s *EpollServer) acceptLoop() {
 
 func (w *EpollWorker) run(wg *sync.WaitGroup) {
 	defer wg.Done()
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
+	// Let Go runtime M:N scheduler manage goroutines without forcing OS thread context switches
 
 	events := make([]syscall.EpollEvent, 512)
 
@@ -320,21 +318,44 @@ func (w *EpollWorker) handleRead(conn *Connection) {
 
 		conn.InRing.AdvanceRead(consumed)
 
+		eng := w.server.cfg.Engine
+		isSimpleSession := (conn.Session == nil || !conn.Session.InMulti) &&
+			eng.Password == "" &&
+			(eng.Cluster == nil || !eng.Cluster.Enabled) &&
+			(eng.Replication == nil || !eng.Replication.ReadOnly)
+
 		// Fast-path: PING
 		if len(args) == 1 && (args[0] == "PING" || args[0] == "ping") {
 			conn.OutBuf = append(conn.OutBuf, respPONG...)
+			eng.Telemetry.RecordCommand("PING", 0, args)
 			continue
 		}
 
 		// Fast-path: GET
-		if len(args) == 2 && (args[0] == "GET" || args[0] == "get") {
-			_, found := w.server.cfg.Engine.Keyspace.Get(args[1])
+		if len(args) == 2 && (args[0] == "GET" || args[0] == "get") && isSimpleSession {
+			ent, found := eng.Keyspace.Get(args[1])
 			if !found {
 				conn.OutBuf = append(conn.OutBuf, respNull...)
-				continue
+			} else if ent.Type == engine.TypeString {
+				if s, ok := ent.Value.(string); ok {
+					conn.OutBuf = AppendBulkString(conn.OutBuf, s)
+				} else {
+					res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
+					conn.OutBuf = AppendValue(conn.OutBuf, res)
+				}
+			} else {
+				res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
+				conn.OutBuf = AppendValue(conn.OutBuf, res)
 			}
-			res := w.server.cfg.Engine.ExecuteCommandWithSession(conn.Session, conn.ID, args)
-			conn.OutBuf = AppendValue(conn.OutBuf, res)
+			eng.Telemetry.RecordCommand("GET", 0, args)
+			continue
+		}
+
+		// Fast-path: SET key val (without extra flags, when AOF and replication are inactive)
+		if len(args) == 3 && (args[0] == "SET" || args[0] == "set") && isSimpleSession && eng.AOF == nil && eng.Replication == nil {
+			eng.Keyspace.Set(args[1], &engine.Entry{Type: engine.TypeString, Value: args[2]})
+			conn.OutBuf = append(conn.OutBuf, respOK...)
+			eng.Telemetry.RecordCommand("SET", 0, args)
 			continue
 		}
 

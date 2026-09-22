@@ -55,8 +55,8 @@ func main() {
 	webPort := flag.Int("web-port", 7380, "Port for Visual Studio Web Dashboard & WebSockets (default: 7380)")
 	webBind := flag.String("web-bind", "0.0.0.0", "Network address to bind Web Studio")
 
-	aofPath := flag.String("aof", "vortex.aof", "Path to Append-Only File (leave empty to disable persistence)")
-	rdbPath := flag.String("rdb", "dump.rdb", "Path to binary RDB snapshot file (leave empty to disable)")
+	aofPath := flag.String("aof", "", "Path to Append-Only File (leave empty to disable persistence)")
+	rdbPath := flag.String("rdb", "", "Path to binary RDB snapshot file (leave empty to disable)")
 	fsync := flag.String("fsync", "everysec", "Fsync policy for AOF: always | everysec | no")
 
 	eventEngine := flag.String("event-engine", "auto", "Network event engine: auto | reactor | std (default: auto)")

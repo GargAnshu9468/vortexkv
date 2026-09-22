@@ -1415,19 +1415,19 @@ func (e *Engine) handleSet(args []string) (resp.Value, bool) {
 		}
 	}
 
-	existing, exists := e.Keyspace.Get(key)
-	if nx && exists {
-		return resp.Null(), false
-	}
-	if xx && !exists {
-		return resp.Null(), false
+	if nx || xx {
+		_, exists := e.Keyspace.Get(key)
+		if nx && exists {
+			return resp.Null(), false
+		}
+		if xx && !exists {
+			return resp.Null(), false
+		}
 	}
 
 	var expiresAt int64
 	if ttlMillis > 0 {
-		expiresAt = time.Now().UnixMilli() + ttlMillis
-	} else if existing != nil && existing.ExpiresAt > 0 {
-		// Redis SET without TTL option resets TTL unless KEEPTTL is passed
+		expiresAt = FastNowMilli() + ttlMillis
 	}
 
 	e.Keyspace.Set(key, &Entry{

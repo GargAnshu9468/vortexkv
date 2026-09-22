@@ -22,7 +22,7 @@ type Shard struct {
 
 - **Hashing Algorithm**: Inlined zero-allocation 64-bit FNV-1a hash directly reading string bytes.
 - **Microbenchmark Performance**: **75,900,000 ops/sec** (**27.19 ns/op**) in parallel across CPU cores.
-- **Concurrency Benefit**: Up to 64 concurrent writes proceed simultaneously across parallel CPU cores with zero false sharing.
+- **Concurrency Benefit**: Up to 256 concurrent writes proceed simultaneously across parallel CPU cores with zero false sharing.
 
 ---
 
@@ -31,7 +31,7 @@ type Shard struct {
 To bridge the raw throughput gap against C++/C# engines (Dragonfly/Garnet) and achieve **6,870,000+ ops/sec**, VortexKV features an event-driven Multi-Reactor network engine (`internal/reactor`):
 
 - **Master Acceptor Loop**: Accepts incoming TCP connections non-blockingly via `kqueue` (macOS) or `epoll` (Linux) with connection timeout control for clean shutdown.
-- **Pinned Sub-Reactor Workers**: Workers run event loops pinned to OS threads via `runtime.LockOSThread()`, preventing goroutine scheduler migration and thread preemption.
+- **Dedicated Sub-Reactor Workers**: Workers run non-blocking event loops cooperatively scheduled by the Go runtime scheduler across available CPU cores.
 - **Contiguous Zero-Alloc Ring Buffer (`RingBuffer`)**: Each connection maintains a 64KB circular ring buffer with direct slice streaming (`ReadSlice()` / `WriteSlice()`).
 - **Zero-Alloc RESP Parser & Fast Serializer**: Direct byte scanning with `ParseCommandInto` (27.5M ops/s) and `AppendValue` (435M ops/s).
 - **Pipeline Coalescing**: Batches outbound responses until the input ring buffer is drained, issuing a single kernel `write()` syscall per batch.

@@ -60,4 +60,4 @@ EXPOSE 7379 7380
 VOLUME ["/data"]
 
 ENTRYPOINT ["/usr/local/bin/vortex-server"]
-CMD ["-bind", "0.0.0.0", "-port", "7379", "-web-bind", "0.0.0.0", "-web-port", "7380", "-aof", "/data/vortex.aof"]
+CMD ["-bind", "0.0.0.0", "-port", "7379", "-web-bind", "0.0.0.0", "-web-port", "7380"]

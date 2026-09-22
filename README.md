@@ -30,9 +30,9 @@
   - **`210,000+ ops/sec`** direct concurrency (non-pipelined) with **`~111µs` p50 latency**.
   - **`435,000,000+ ops/sec`** (2.75 ns/op) zero-copy RESP wire serialization.
   - **`75,900,000+ ops/sec`** raw internal keyspace throughput (27 ns/op) via zero-allocation inlined FNV-1a hashing.
-  - **Hardware-Accelerated Multi-Reactor Engine**: Custom event-driven `kqueue` (macOS/Darwin) and `epoll` (Linux) reactor architecture with pinned OS threads (`runtime.LockOSThread()`) and zero-allocation contiguous circular ring buffers.
+  - **Hardware-Accelerated Multi-Reactor Engine**: Custom event-driven `kqueue` (macOS/Darwin) and `epoll` (Linux) reactor architecture with non-blocking worker loops cooperatively scheduled by the Go runtime with zero-allocation contiguous circular ring buffers.
   - **Smart Socket Pipeline Coalescing**: Batches pipelined responses into consolidated kernel writes, slashing syscall context-switching by over 95%.
-  - **Cacheline-Padded 64-Shard Concurrency**: Eliminates CPU L1/L2 false sharing across cores and removes global client mutex bottlenecks.
+  - **Cacheline-Padded 256-Shard Concurrency**: Eliminates CPU L1/L2 false sharing across cores with 256-way lock striping and removes global client mutex bottlenecks.
 - 🔒 **Enterprise Production Security**:
   - Full `requirepass` and `AUTH [username] <password>` support.
   - Native **TLS/SSL wire encryption** (`-tls-cert`, `-tls-key`).
@@ -40,7 +40,7 @@
 - 💾 **Resource Safety & MaxMemory LRU Eviction**:
   - Strict memory cap (`-maxmemory 4gb`) with active `allkeys-lru` eviction to eliminate Out-Of-Memory (OOM) crashes.
   - Configurable `maxclients` connection ceiling (default 10,000).
-- 🔄 **ACID Atomic Transactions**: Full support for `MULTI`, `EXEC`, and `DISCARD`.
+- 🔄 **Isolated Atomic Command Batches**: Full support for `MULTI`, `EXEC`, `DISCARD`, and `WATCH` command queuing and atomic execution.
 - 📜 **Embedded Lua 5.1 Scripting**: Sub-millisecond atomic multi-step scripts (`EVAL`, `EVALSHA`, `SCRIPT LOAD`, `SCRIPT EXISTS`, `SCRIPT FLUSH`, `SCRIPT KILL`) with pure-Go runtime, bidirectional RESP conversion, `redis.call`/`redis.pcall` bridge, SHA1 caching, and 5-second runaway timeout protection.
 - 🔮 **WebAssembly (Wasm) Engine**: Pure-Go WebAssembly runtime powered by `wazero` (zero CGO) executing compiled modules (`WASM LOAD`, `WASM CALL`, `WASM LIST`, `WASM DELETE`) with native keyspace bindings (`vortex_get`, `vortex_set`).
 - 📡 **Cluster Gossip Bus & Automatic Failover**: Dedicated binary inter-node bus on `port + 10000` (e.g. `17379`) with continuous heartbeat exchanges, majority `PFAIL`/`FAIL` detection consensus, and fully autonomous replica election and slot takeover without human intervention.

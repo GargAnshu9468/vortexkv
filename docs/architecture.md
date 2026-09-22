@@ -43,7 +43,7 @@ To bridge the raw throughput gap against C++/C# engines (Dragonfly/Garnet) and a
                 ▼                         ▼                         ▼
     ┌───────────────────────┐ ┌───────────────────────┐ ┌───────────────────────┐
     │ Sub-Reactor Worker 0  │ │ Sub-Reactor Worker 1  │ │ Sub-Reactor Worker N  │
-    │  (LockOSThread, kq)   │ │  (LockOSThread, kq)   │ │  (LockOSThread, kq)   │
+    │  (Worker Event Loop)  │ │  (Worker Event Loop)  │ │  (Worker Event Loop)  │
     └───────────┬───────────┘ └───────────┬───────────┘ └───────────┬───────────┘
                 │                         │                         │
       [Zero-Alloc RingBuf]      [Zero-Alloc RingBuf]      [Zero-Alloc RingBuf]
@@ -52,9 +52,9 @@ To bridge the raw throughput gap against C++/C# engines (Dragonfly/Garnet) and a
 ```
 
 ### Key Architectural Pillars of the Reactor Engine:
-1. **Multi-Reactor Thread-Pinned Workers**:
-   - Master listener registers `EVFILT_READ` / `EPOLLIN` to accept connections non-blockingly and dispatches new sockets round-robin to worker threads.
-   - Each worker runs its own event loop pinned to a physical operating system thread via `runtime.LockOSThread()`, eliminating Go scheduler preemption and CPU cache migration.
+1. **Multi-Reactor Event-Driven Workers**:
+   - Master listener registers `EVFILT_READ` / `EPOLLIN` to accept connections non-blockingly and dispatches new sockets round-robin to worker event loops.
+   - Each worker runs its own non-blocking demuxing loop (`kqueue` on macOS, `epoll` on Linux) cooperatively managed by the Go runtime scheduler.
 2. **Contiguous Zero-Allocation Circular Ring Buffer (`RingBuffer`)**:
    - Every connection maintains a pre-allocated circular ring buffer (default 64 KB).
    - Reads directly stream from the socket into the ring buffer via `ReadSlice()` without allocating heap byte slices.

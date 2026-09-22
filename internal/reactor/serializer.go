@@ -14,6 +14,15 @@ var (
 	respOne  = []byte(":1\r\n")
 )
 
+// AppendBulkString appends a string as a RESP bulk string directly into dst slice with zero allocations.
+func AppendBulkString(dst []byte, s string) []byte {
+	dst = append(dst, '$')
+	dst = strconv.AppendInt(dst, int64(len(s)), 10)
+	dst = append(dst, '\r', '\n')
+	dst = append(dst, s...)
+	return append(dst, '\r', '\n')
+}
+
 // AppendValue serializes a resp.Value directly into dst slice with zero allocations.
 func AppendValue(dst []byte, v resp.Value) []byte {
 	if v.Null {

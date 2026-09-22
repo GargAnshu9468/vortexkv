@@ -62,19 +62,15 @@ To hit 6.8M+ ops/sec, we had to rethink the networking engine from the metal up.
 
 ---
 
-## 1. Pinned Multi-Reactor with `runtime.LockOSThread()`
+## 1. Multi-Reactor Non-Blocking Event Loops
 
-Rather than spawning unbounded goroutines, VortexKV implements a hardware-accelerated **Multi-Reactor pattern** (using Linux `epoll` and macOS/BSD `kqueue`).
+Rather than spawning unbounded goroutines per connection, VortexKV implements a hardware-accelerated **Multi-Reactor pattern** (using Linux `epoll` and macOS/BSD `kqueue`).
 
 A central acceptor reactor handles incoming client connections and distributes them across a fixed pool of worker reactors (one worker per available CPU core):
 
 ```go
 func (w *ReactorWorker) Loop() {
-    // Pin this goroutine to a dedicated OS thread
-    runtime.LockOSThread()
-    defer runtime.UnlockOSThread()
-
-    events := make([]KEvent, 1024)
+    events := make([]KEvent, 512)
     for !w.stopped {
         n, err := w.poll(events)
         for i := 0; i < n; i++ {
@@ -84,10 +80,10 @@ func (w *ReactorWorker) Loop() {
 }
 ```
 
-### Why `runtime.LockOSThread()` matters:
-By binding the event reactor worker permanently to an OS thread, the OS scheduler never migrates the loop between CPU cores. 
-- **L1/L2 Instruction & Data Cache Preservation**: CPU caches stay hot.
-- **Zero Cache Line Bouncing**: Kernel socket notifications land on the exact core that owns the connection.
+### Why cooperative non-blocking reactors matter:
+By leveraging Go's efficient M:N user-space runtime scheduler rather than fighting it, the worker event loops demultiplex hundreds of active sockets without incurring kernel thread context switch penalties (~10-100x slower than goroutine switches). 
+- **L1/L2 Instruction & Data Cache Preservation**: Worker loops stay active and cache-hot.
+- **Zero Sycall Waste**: Batch event draining processes multiplexed I/O efficiently per poll cycle.
 
 ---
 
@@ -219,10 +215,10 @@ redis-cli -p 7379 PING
 
 Building high-throughput network engines in Go isn't about avoiding the language—it's about understanding the runtime:
 
-1. **Pin workers with `LockOSThread()`** to avoid CPU core thrashing.
+1. **Leverage non-blocking event loops with the runtime M:N scheduler** to avoid kernel context switch overhead.
 2. **Use preallocated ring buffers** to starve the garbage collector.
 3. **Batch kernel write syscalls** when queues drain.
-4. **Pad concurrent structs with 64 bytes** to stop cache line bouncing.
+4. **Pad concurrent structs with 64 bytes and 256-way sharding** to stop cache line bouncing and lock contention.
 
 If you love systems engineering, performance optimization, and pure Go, check out the code and consider leaving a star!
 

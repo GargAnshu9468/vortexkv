@@ -83,9 +83,9 @@ Full Redis wire-compatible append-only streaming and distributed task queue oper
 
 ---
 
-## 🔄 Atomic Transactions
+## 🔄 Atomic Command Batches & Transactions
 
-VortexKV supports ACID atomic multi-command batches:
+VortexKV supports Redis-compatible isolated atomic multi-command batches (`MULTI`, `EXEC`, `DISCARD`, `WATCH`):
 
 ```text
 MULTI
@@ -94,7 +94,7 @@ SET account:bob 1050
 EXEC
 ```
 - **`MULTI`**: Marks the start of a transaction block. Subsequent commands are queued.
-- **`EXEC`**: Executes all queued commands atomically.
+- **`EXEC`**: Executes all queued commands atomically without interleaving from other clients.
 - **`DISCARD`**: Flushes all queued commands in the transaction.
 
 ---
