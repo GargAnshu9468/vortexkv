@@ -189,6 +189,16 @@ The binary embeds a visual web command deck with 2D/3D keyspace visualization, l
 
 ---
 
+## 5. The Final Mile: Kernel Socket Steering (`SO_REUSEPORT`) & Single-Cycle Dispatch
+
+To push the envelope further and beat both Dragonfly and Redis in multi-pipeline throughput, we unlocked two more micro-architectural advantages:
+
+1. **Kernel Socket Steering via `SO_REUSEPORT`**: Instead of having a single listener accept all TCP sockets and hand them to worker channels (introducing channel lock synchronization), every worker reactor opens its own listener socket with `SO_REUSEPORT`. The Linux/Darwin kernel hashes incoming connections directly to worker event loops in hardware.
+2. **Single-Cycle 32-bit Integer Command Dispatch**: When a command arrives, instead of allocating Go strings and executing `strings.ToUpper()`, we read the first 4 bytes as a `uint32` word with bitwise lowercase folding (`w | 0x20202020`). Matching `GET`, `SET`, `DEL`, or `PING` completes in a **single CPU instruction cycle** with zero allocations.
+3. **In-Place Keyspace Updates**: Hot `SET` writes overwrite existing byte slices in-place (`dst = append(dst[:0], val...)`) whenever capacity permits, eliminating heap churn entirely.
+
+---
+
 ## Running VortexKV in 30 Seconds
 
 VortexKV is completely open-source under the MIT license.

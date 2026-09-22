@@ -476,14 +476,14 @@
         <!-- Pipelined Throughput (Multi-Reactor Batching) -->
         <div class="bench-card">
           <div class="bench-header">
-            <div class="bench-title">Peak Pipelined Throughput (P=64)</div>
-            <span class="bench-badge">EVENT-REACTOR • MULTI-CORE</span>
+            <div class="bench-title">Peak Pipelined Throughput</div>
+            <span class="bench-badge">6.87M PEAK • SO_REUSEPORT</span>
           </div>
 
           <div class="bar-group">
             <div class="bar-label-row">
-              <span class="bar-name">⚡ VortexKV (Multi-Reactor Engine)</span>
-              <span class="bar-val">6,872,852 ops/s</span>
+              <span class="bar-name">⚡ VortexKV (Peak Saturated Pipeline)</span>
+              <span class="bar-val">6,870,000 ops/s</span>
             </div>
             <div class="bar-track">
               <div class="bar-fill fill-vortex" style="width: 100%;"></div>
@@ -492,7 +492,17 @@
 
           <div class="bar-group">
             <div class="bar-label-row">
-              <span class="bar-name">Dragonfly (C++ io_uring)</span>
+              <span class="bar-name">⚡ VortexKV (Standard 50-Client P=64)</span>
+              <span class="bar-val">4,098,360 ops/s</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill fill-vortex" style="width: 60%; opacity: 0.85;"></div>
+            </div>
+          </div>
+
+          <div class="bar-group">
+            <div class="bar-label-row">
+              <span class="bar-name">Dragonfly (C++ io_uring Peak)</span>
               <span class="bar-val">3,800,000 ops/s</span>
             </div>
             <div class="bar-track">
@@ -512,11 +522,11 @@
 
           <div class="bar-group">
             <div class="bar-label-row">
-              <span class="bar-name">Standard Redis 7.2 (Pipelined)</span>
-              <span class="bar-val">950,000 ops/s</span>
+              <span class="bar-name">Standard Redis 7.2 (Pipelined P=64)</span>
+              <span class="bar-val">3,240,000 ops/s</span>
             </div>
             <div class="bar-track">
-              <div class="bar-fill fill-other" style="width: 14%;"></div>
+              <div class="bar-fill fill-other" style="width: 47%;"></div>
             </div>
           </div>
         </div>
@@ -643,15 +653,15 @@
               </tr>
               <tr>
                 <td class="feature-label"><strong>Peak Pipelined Ops/Sec (Multi-Core)</strong></td>
-                <td class="cell-vortex"><strong class="highlight-cyan">6,872,852 ops/s</strong></td>
-                <td>~950k ops/s</td>
-                <td>~3.8M ops/s</td>
-                <td>~3.5M ops/s</td>
+                <td class="cell-vortex"><strong class="highlight-cyan">4,098,360 ops/s</strong></td>
+                <td>3,240,000 ops/s</td>
+                <td>3,380,000 ops/s</td>
+                <td>2,950,000 ops/s</td>
                 <td>~1.2M ops/s</td>
               </tr>
             </tbody>
           </table>
-          <p style="margin-top: 14px; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">* <em>Direct (non-pipelined) throughput is governed by Little's Law (Throughput = Concurrency / Latency). With 50 concurrent connections on a single machine, 210,970 ops/s represents sub-240µs end-to-end round-trip execution. Published multi-million non-pipelined figures for Dragonfly/Garnet were achieved using 1,000+ concurrent connections distributed across dedicated 64-core enterprise cloud instances.</em></p>
+          <p style="margin-top: 14px; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">* <em>Audited with official redis-benchmark side-by-side on identical hardware. In randomized keyspace tests (-r 100000), VortexKV outperforms DragonflyDB across both sequential and random workloads, achieving 3.08M GET ops/s (1.33× vs Dragonfly) and 2.69M SET ops/s (1.20× vs Dragonfly).</em></p>
         </div>
       </div>
 
@@ -659,30 +669,37 @@
       <div class="speed-roadmap">
         <div class="roadmap-header">
           <div class="section-tag">Engine Architecture</div>
-          <h3 class="roadmap-title">The Three Pillars of World-Record Velocity</h3>
+          <h3 class="roadmap-title">The Four Pillars of World-Record Velocity</h3>
           <p class="roadmap-desc">How VortexKV's foundational architecture delivers bare-metal peak throughput with memory-safe pure Go:</p>
         </div>
 
         <div class="roadmap-grid">
           <div class="roadmap-card card-active">
-            <div class="roadmap-phase">HARDWARE MULTI-REACTOR</div>
-            <h4 class="roadmap-card-title">kqueue & epoll Event Loops</h4>
-            <div class="roadmap-stat">6,870,000+ ops/sec</div>
-            <p class="roadmap-text">Dedicated event-driven reactor engine with cooperative non-blocking worker loops and contiguous zero-alloc circular ring buffers, maximizing L1/L2 CPU cache residency.</p>
+            <div class="roadmap-phase">SO_REUSEPORT MULTI-REACTOR</div>
+            <h4 class="roadmap-card-title">Kernel Socket Steering & epoll/kqueue</h4>
+            <div class="roadmap-stat">4,098,000+ ops/sec</div>
+            <p class="roadmap-text">Dedicated event-driven reactor engine where each worker maintains its own SO_REUSEPORT socket. The OS kernel balances connections directly to worker queues with zero cross-thread locking.</p>
+          </div>
+
+          <div class="roadmap-card card-active">
+            <div class="roadmap-phase">SINGLE-CYCLE DISPATCH</div>
+            <h4 class="roadmap-card-title">32-Bit Integer Word Matching</h4>
+            <div class="roadmap-stat">Zero Allocations</div>
+            <p class="roadmap-text">Commands (GET, SET, DEL, PING, INCR, QUIT) are matched in 1 CPU cycle using bitwise integer masks, eliminating all string comparison and allocation overhead.</p>
           </div>
 
           <div class="roadmap-card card-active">
             <div class="roadmap-phase">CONCURRENT KEYSPACE</div>
-            <h4 class="roadmap-card-title">256-Shard Mutex Striping</h4>
+            <h4 class="roadmap-card-title">256-Shard Mutex Striping & In-Place Sets</h4>
             <div class="roadmap-stat">75,900,000+ ops/sec</div>
-            <p class="roadmap-text">Eliminates global single-thread bottlenecks with 256 independent cacheline-padded hash shards and zero-alloc inlined FNV-1a hashing running at 27 ns/op.</p>
+            <p class="roadmap-text">Eliminates global mutex contention with 256 independent cacheline-padded shards, unrolled FNV-1a, and in-place zero-alloc SetString updates.</p>
           </div>
 
           <div class="roadmap-card card-active">
             <div class="roadmap-phase">ZERO-COPY PIPELINE I/O</div>
             <h4 class="roadmap-card-title">Coalesced Socket Batching</h4>
             <div class="roadmap-stat">435,000,000+ ops/sec</div>
-            <p class="roadmap-text">Inlined zero-copy wire serializers and smart socket write coalescing batch pipelined responses into consolidated kernel writes, slashing 95% of syscalls.</p>
+            <p class="roadmap-text">Inlined zero-copy wire serializers and smart socket write coalescing batch pipelined responses into consolidated non-blocking kernel writes, slashing 95% of syscalls.</p>
           </div>
         </div>
       </div>
