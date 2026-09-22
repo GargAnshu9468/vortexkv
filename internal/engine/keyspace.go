@@ -85,14 +85,21 @@ func NewKeyspace() *Keyspace {
 	return ks
 }
 
-// fnv1a implements ultra-fast zero-allocation 64-bit FNV-1a hash over string bytes
+// fnv1a implements ultra-fast zero-allocation 64-bit FNV-1a hash unrolled for performance.
 func fnv1a(s string) uint64 {
 	const offset64 = 14695981039346656037
 	const prime64 = 1099511628211
-	var hash uint64 = offset64
-	for i := 0; i < len(s); i++ {
-		hash ^= uint64(s[i])
-		hash *= prime64
+	hash := uint64(offset64)
+	n := len(s)
+	i := 0
+	for ; i+4 <= n; i += 4 {
+		hash = (hash ^ uint64(s[i])) * prime64
+		hash = (hash ^ uint64(s[i+1])) * prime64
+		hash = (hash ^ uint64(s[i+2])) * prime64
+		hash = (hash ^ uint64(s[i+3])) * prime64
+	}
+	for ; i < n; i++ {
+		hash = (hash ^ uint64(s[i])) * prime64
 	}
 	return hash
 }
@@ -113,7 +120,7 @@ func (ks *Keyspace) activeExpirationReaper() {
 		case <-ks.stopReaper:
 			return
 		case <-ticker.C:
-			nowMilli := time.Now().UnixMilli()
+			nowMilli := FastNowMilli()
 			// Inspect random shards
 			for s := 0; s < 16; s++ {
 				shardIdx := rng.Intn(NumShards)
@@ -150,9 +157,9 @@ func (ks *Keyspace) Get(key string) (*Entry, bool) {
 		return nil, false
 	}
 
-	// Fast path: if no TTL is set (vast majority of cache keys), skip time.Now()
+	// Fast path: if no TTL is set (vast majority of cache keys), skip clock checks
 	if entry.ExpiresAt > 0 {
-		now := time.Now().UnixMilli()
+		now := FastNowMilli()
 		if entry.IsExpired(now) {
 			// Passive expiration on access
 			shard.mu.Lock()
@@ -168,13 +175,39 @@ func (ks *Keyspace) Get(key string) (*Entry, bool) {
 	return entry, true
 }
 
+// SetString updates existing string entry in-place with zero heap allocations,
+// or allocates a new entry if key did not previously exist.
+func (ks *Keyspace) SetString(key string, val string) {
+	shard := ks.getShard(key)
+	shard.mu.Lock()
+
+	now := FastNowMilli()
+	if existing, exists := shard.entries[key]; exists && existing.Type == TypeString {
+		existing.Value = val
+		existing.ExpiresAt = 0
+		existing.UpdatedAt = now
+		existing.LastAccessedAt = now
+		shard.mu.Unlock()
+		return
+	}
+
+	shard.entries[key] = &Entry{
+		Type:           TypeString,
+		Value:          val,
+		UpdatedAt:      now,
+		LastAccessedAt: now,
+	}
+	ks.keyCount.Add(1)
+	shard.mu.Unlock()
+}
+
 func (ks *Keyspace) Set(key string, entry *Entry) {
 	shard := ks.getShard(key)
 	shard.mu.Lock()
 
 	now := FastNowMilli()
 	entry.UpdatedAt = now
-	atomic.StoreInt64(&entry.LastAccessedAt, now)
+	entry.LastAccessedAt = now
 	if _, exists := shard.entries[key]; !exists {
 		ks.keyCount.Add(1)
 	}
@@ -189,7 +222,7 @@ func (ks *Keyspace) SetNX(key string, entry *Entry) bool {
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := FastNowMilli()
 	if existing, exists := shard.entries[key]; exists {
 		if existing.IsExpired(now) {
 			delete(shard.entries, key)
@@ -200,7 +233,7 @@ func (ks *Keyspace) SetNX(key string, entry *Entry) bool {
 	}
 
 	entry.UpdatedAt = now
-	atomic.StoreInt64(&entry.LastAccessedAt, now)
+	entry.LastAccessedAt = now
 	shard.entries[key] = entry
 	ks.keyCount.Add(1)
 	return true
@@ -212,7 +245,7 @@ func (ks *Keyspace) IncrBy(key string, delta int64) (int64, error) {
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := FastNowMilli()
 	entry, exists := shard.entries[key]
 	if exists && entry.IsExpired(now) {
 		delete(shard.entries, key)
@@ -242,7 +275,7 @@ func (ks *Keyspace) IncrBy(key string, delta int64) (int64, error) {
 	if exists {
 		entry.Value = newStr
 		entry.UpdatedAt = now
-		atomic.StoreInt64(&entry.LastAccessedAt, now)
+		entry.LastAccessedAt = now
 	} else {
 		newEntry := &Entry{
 			Type:           TypeString,
@@ -263,7 +296,7 @@ func (ks *Keyspace) Append(key string, val string) (int64, error) {
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := FastNowMilli()
 	entry, exists := shard.entries[key]
 	if exists && entry.IsExpired(now) {
 		delete(shard.entries, key)
@@ -296,7 +329,7 @@ func (ks *Keyspace) Append(key string, val string) (int64, error) {
 	newVal := strVal + val
 	entry.Value = newVal
 	entry.UpdatedAt = now
-	atomic.StoreInt64(&entry.LastAccessedAt, now)
+	entry.LastAccessedAt = now
 	return int64(len(newVal)), nil
 }
 
@@ -307,7 +340,7 @@ func (ks *Keyspace) GetOrCreate(key string, entryType EntryType, creator func() 
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := FastNowMilli()
 	entry, exists := shard.entries[key]
 	if exists && entry.IsExpired(now) {
 		delete(shard.entries, key)
@@ -427,7 +460,7 @@ func (ks *Keyspace) Expire(key string, ttlMillis int64) bool {
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := FastNowMilli()
 	entry, exists := shard.entries[key]
 	if !exists {
 		return false
@@ -450,7 +483,7 @@ func (ks *Keyspace) TTL(key string) int64 {
 	if entry.ExpiresAt == 0 {
 		return -1 // key exists but has no associated expire
 	}
-	remaining := entry.ExpiresAt - time.Now().UnixMilli()
+	remaining := entry.ExpiresAt - FastNowMilli()
 	if remaining <= 0 {
 		return -2
 	}
@@ -465,7 +498,7 @@ func (ks *Keyspace) PTTL(key string) int64 {
 	if entry.ExpiresAt == 0 {
 		return -1
 	}
-	remaining := entry.ExpiresAt - time.Now().UnixMilli()
+	remaining := entry.ExpiresAt - FastNowMilli()
 	if remaining <= 0 {
 		return -2
 	}
@@ -477,7 +510,7 @@ func (ks *Keyspace) Persist(key string) bool {
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := FastNowMilli()
 	entry, exists := shard.entries[key]
 	if !exists {
 		return false

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"syscall"
-	"time"
 
 	"github.com/GargAnshu9468/vortexkv/internal/engine"
 )
@@ -27,15 +27,16 @@ type EpollServer struct {
 
 // EpollWorker manages a single epoll instance pinned to an OS thread.
 type EpollWorker struct {
-	id       int
-	epFd     int
-	server   *EpollServer
-	conns    map[int]*Connection
-	muConns  sync.RWMutex
-	readBuf  []byte
-	cmdArgs  []string
-	localOps int64
-	stopChan chan struct{}
+	id         int
+	epFd       int
+	listenerFd int
+	server     *EpollServer
+	conns      map[int]*Connection
+	muConns    sync.RWMutex
+	readBuf    []byte
+	cmdArgs    []string
+	localOps   int64
+	stopChan   chan struct{}
 }
 
 // NewLinuxReactor creates a new epoll-based reactor server for Linux.
@@ -75,36 +76,46 @@ func (s *EpollServer) Start() error {
 		sa = sa6
 	}
 
-	fd, err := syscall.Socket(domain, syscall.SOCK_STREAM, 0)
+	createListener := func() (int, error) {
+		fd, err := syscall.Socket(domain, syscall.SOCK_STREAM, 0)
+		if err != nil {
+			return 0, fmt.Errorf("socket: %w", err)
+		}
+		if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
+			_ = syscall.Close(fd)
+			return 0, fmt.Errorf("setsockopt SO_REUSEADDR: %w", err)
+		}
+		_ = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, 0x0F, 1) // SO_REUSEPORT
+		if err := syscall.SetNonblock(fd, true); err != nil {
+			_ = syscall.Close(fd)
+			return 0, fmt.Errorf("setnonblock listener: %w", err)
+		}
+		if err := syscall.Bind(fd, sa); err != nil {
+			_ = syscall.Close(fd)
+			return 0, fmt.Errorf("bind: %w", err)
+		}
+		if err := syscall.Listen(fd, 4096); err != nil {
+			_ = syscall.Close(fd)
+			return 0, fmt.Errorf("listen: %w", err)
+		}
+		return fd, nil
+	}
+
+	masterFd, err := createListener()
 	if err != nil {
-		return fmt.Errorf("socket: %w", err)
+		return err
+	}
+	s.listenerFd = masterFd
+
+	if tcpAddr.Port == 0 {
+		if saBound, err := syscall.Getsockname(masterFd); err == nil {
+			sa = saBound
+		}
 	}
 
-	// Set socket options: SO_REUSEADDR, SO_REUSEPORT (0x0F on linux), Nonblock
-	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
-		_ = syscall.Close(fd)
-		return fmt.Errorf("setsockopt SO_REUSEADDR: %w", err)
-	}
-	_ = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, 0x0F, 1) // SO_REUSEPORT
-	if err := syscall.SetNonblock(fd, true); err != nil {
-		_ = syscall.Close(fd)
-		return fmt.Errorf("setnonblock listener: %w", err)
-	}
+	log.Printf("[VortexKV] ⚡ Event Reactor (Linux epoll) listening on %s (%d worker loops, SO_REUSEPORT mode)", s.cfg.Addr, s.cfg.Workers)
 
-	if err := syscall.Bind(fd, sa); err != nil {
-		_ = syscall.Close(fd)
-		return fmt.Errorf("bind: %w", err)
-	}
-
-	if err := syscall.Listen(fd, 4096); err != nil {
-		_ = syscall.Close(fd)
-		return fmt.Errorf("listen: %w", err)
-	}
-	s.listenerFd = fd
-
-	log.Printf("[VortexKV] ⚡ Event Reactor (Linux epoll) listening on %s (%d worker loops, 4M+ ops/s mode)", s.cfg.Addr, s.cfg.Workers)
-
-	// Initialize worker pool
+	// Initialize worker pool with independent listeners
 	s.workers = make([]*EpollWorker, s.cfg.Workers)
 	for i := 0; i < s.cfg.Workers; i++ {
 		ep, err := syscall.EpollCreate1(0)
@@ -112,115 +123,43 @@ func (s *EpollServer) Start() error {
 			s.Stop()
 			return fmt.Errorf("epoll_create1: %w", err)
 		}
-		worker := &EpollWorker{
-			id:       i,
-			epFd:     ep,
-			server:   s,
-			conns:    make(map[int]*Connection),
-			readBuf:  make([]byte, 64*1024),
-			cmdArgs:  make([]string, 0, 16),
-			stopChan: make(chan struct{}),
+
+		lFd := masterFd
+		if i > 0 {
+			wFd, err := createListener()
+			if err == nil {
+				lFd = wFd
+			} else {
+				lFd = 0
+			}
 		}
+
+		worker := &EpollWorker{
+			id:         i,
+			epFd:       ep,
+			listenerFd: lFd,
+			server:     s,
+			conns:      make(map[int]*Connection),
+			readBuf:    make([]byte, 64*1024),
+			cmdArgs:    make([]string, 0, 16),
+			stopChan:   make(chan struct{}),
+		}
+
+		// Register listener in worker's epoll
+		if lFd > 0 {
+			lEvent := syscall.EpollEvent{
+				Events: syscall.EPOLLIN,
+				Fd:     int32(lFd),
+			}
+			_ = syscall.EpollCtl(ep, syscall.EPOLL_CTL_ADD, lFd, &lEvent)
+		}
+
 		s.workers[i] = worker
 		s.wg.Add(1)
 		go worker.run(&s.wg)
 	}
 
-	// Start acceptor loop
-	s.wg.Add(1)
-	go s.acceptLoop()
-
 	return nil
-}
-
-func (s *EpollServer) acceptLoop() {
-	defer s.wg.Done()
-
-	acceptEp, err := syscall.EpollCreate1(0)
-	if err != nil {
-		return
-	}
-	defer syscall.Close(acceptEp)
-
-	ev := syscall.EpollEvent{
-		Events: syscall.EPOLLIN,
-		Fd:     int32(s.listenerFd),
-	}
-	if err := syscall.EpollCtl(acceptEp, syscall.EPOLL_CTL_ADD, s.listenerFd, &ev); err != nil {
-		return
-	}
-
-	events := make([]syscall.EpollEvent, 16)
-
-	for {
-		select {
-		case <-s.stopChan:
-			return
-		default:
-		}
-
-		nev, err := syscall.EpollWait(acceptEp, events, 50) // 50ms timeout
-		if err != nil {
-			select {
-			case <-s.stopChan:
-				return
-			default:
-				continue
-			}
-		}
-
-		for i := 0; i < nev; i++ {
-			for {
-				nfd, sa, err := syscall.Accept(s.listenerFd)
-				if err != nil {
-					break // drained all pending connects
-				}
-
-				// Enforce max clients
-				if s.cfg.MaxClients > 0 && s.connCount.Load() >= s.cfg.MaxClients {
-					_, _ = syscall.Write(nfd, []byte("-ERR max number of clients reached\r\n"))
-					_ = syscall.Close(nfd)
-					continue
-				}
-
-				_ = syscall.SetNonblock(nfd, true)
-				_ = syscall.SetsockoptInt(nfd, syscall.IPPROTO_TCP, syscall.TCP_NODELAY, 1)
-
-				remoteIP := "unknown"
-				if sa4, ok := sa.(*syscall.SockaddrInet4); ok {
-					remoteIP = fmt.Sprintf("%d.%d.%d.%d:%d", sa4.Addr[0], sa4.Addr[1], sa4.Addr[2], sa4.Addr[3], sa4.Port)
-				}
-
-				connID := fmt.Sprintf("conn-%d", s.connCount.Add(1))
-				s.cfg.Engine.Telemetry.IncrConnections()
-
-				conn := &Connection{
-					Fd:       nfd,
-					ID:       connID,
-					InRing:   NewRingBuffer(s.cfg.RingSize),
-					OutBuf:   make([]byte, 0, 64*1024),
-					Session:  s.cfg.Engine.GetClientSession(connID),
-					RemoteIP: remoteIP,
-				}
-
-				// Distribute across worker loops via round-robin
-				workerIdx := int(s.roundRobin.Add(1) % uint64(len(s.workers)))
-				worker := s.workers[workerIdx]
-				conn.SubID = workerIdx
-
-				worker.muConns.Lock()
-				worker.conns[nfd] = conn
-				worker.muConns.Unlock()
-
-				// Register in worker epoll
-				wEvent := syscall.EpollEvent{
-					Events: syscall.EPOLLIN | syscall.EPOLLERR | syscall.EPOLLHUP,
-					Fd:     int32(nfd),
-				}
-				_ = syscall.EpollCtl(worker.epFd, syscall.EPOLL_CTL_ADD, nfd, &wEvent)
-			}
-		}
-	}
 }
 
 func (w *EpollWorker) run(wg *sync.WaitGroup) {
@@ -253,6 +192,12 @@ func (w *EpollWorker) run(wg *sync.WaitGroup) {
 			ev := events[i]
 			fd := int(ev.Fd)
 
+			// Fast path: incoming connection on this worker's listener
+			if w.listenerFd > 0 && fd == w.listenerFd {
+				w.acceptConns()
+				continue
+			}
+
 			w.muConns.RLock()
 			conn, exists := w.conns[fd]
 			w.muConns.RUnlock()
@@ -274,6 +219,51 @@ func (w *EpollWorker) run(wg *sync.WaitGroup) {
 	}
 }
 
+func (w *EpollWorker) acceptConns() {
+	for {
+		nfd, sa, err := syscall.Accept4(w.listenerFd, syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC)
+		if err != nil {
+			break
+		}
+
+		if w.server.cfg.MaxClients > 0 && w.server.connCount.Load() >= w.server.cfg.MaxClients {
+			_, _ = syscall.Write(nfd, []byte("-ERR max number of clients reached\r\n"))
+			_ = syscall.Close(nfd)
+			continue
+		}
+
+		_ = syscall.SetsockoptInt(nfd, syscall.IPPROTO_TCP, syscall.TCP_NODELAY, 1)
+
+		remoteIP := "unknown"
+		if sa4, ok := sa.(*syscall.SockaddrInet4); ok {
+			remoteIP = fmt.Sprintf("%d.%d.%d.%d:%d", sa4.Addr[0], sa4.Addr[1], sa4.Addr[2], sa4.Addr[3], sa4.Port)
+		}
+
+		connID := fmt.Sprintf("conn-%d", w.server.connCount.Add(1))
+		w.server.cfg.Engine.Telemetry.IncrConnections()
+
+		conn := &Connection{
+			Fd:       nfd,
+			ID:       connID,
+			SubID:    w.id,
+			InRing:   NewRingBuffer(w.server.cfg.RingSize),
+			OutBuf:   make([]byte, 0, 64*1024),
+			Session:  w.server.cfg.Engine.GetClientSession(connID),
+			RemoteIP: remoteIP,
+		}
+
+		w.muConns.Lock()
+		w.conns[nfd] = conn
+		w.muConns.Unlock()
+
+		ev := syscall.EpollEvent{
+			Events: syscall.EPOLLIN | syscall.EPOLLERR | syscall.EPOLLHUP,
+			Fd:     int32(nfd),
+		}
+		_ = syscall.EpollCtl(w.epFd, syscall.EPOLL_CTL_ADD, nfd, &ev)
+	}
+}
+
 func (w *EpollWorker) incOps(eng *engine.Engine) {
 	w.localOps++
 	if w.localOps >= 64 {
@@ -290,56 +280,102 @@ func (w *EpollWorker) flushOps(eng *engine.Engine) {
 }
 
 func (w *EpollWorker) executeCommand(conn *Connection, args []string) {
+	if len(args) == 0 {
+		return
+	}
+
 	eng := w.server.cfg.Engine
 	isSimpleSession := (conn.Session == nil || (!conn.Session.InMulti && len(conn.Session.WatchedKeys) == 0)) &&
 		eng.Password == "" &&
 		(eng.Cluster == nil || !eng.Cluster.Enabled) &&
 		(eng.Replication == nil || !eng.Replication.ReadOnly)
 
-	// Fast-path: PING
-	if len(args) == 1 && (args[0] == "PING" || args[0] == "ping") {
-		conn.OutBuf = append(conn.OutBuf, respPONG...)
-		w.incOps(eng)
-		return
-	}
-
-	// Fast-path: GET
-	if len(args) == 2 && (args[0] == "GET" || args[0] == "get") && isSimpleSession {
-		ent, found := eng.Keyspace.Get(args[1])
-		if !found {
-			conn.OutBuf = append(conn.OutBuf, respNull...)
-		} else if ent.Type == engine.TypeString {
-			if s, ok := ent.Value.(string); ok {
-				conn.OutBuf = AppendBulkString(conn.OutBuf, s)
-			} else {
-				res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
-				conn.OutBuf = AppendValue(conn.OutBuf, res)
+	cmdLen := len(args[0])
+	switch cmdLen {
+	case 3:
+		switch AsCmd3(args[0]) {
+		case CmdGet:
+			if len(args) == 2 && isSimpleSession {
+				ent, found := eng.Keyspace.Get(args[1])
+				if !found {
+					conn.OutBuf = append(conn.OutBuf, respNull...)
+				} else if ent.Type == engine.TypeString {
+					if s, ok := ent.Value.(string); ok {
+						conn.OutBuf = AppendBulkString(conn.OutBuf, s)
+					} else {
+						res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
+						conn.OutBuf = AppendValue(conn.OutBuf, res)
+					}
+				} else {
+					res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
+					conn.OutBuf = AppendValue(conn.OutBuf, res)
+				}
+				w.incOps(eng)
+				return
 			}
-		} else {
-			res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
-			conn.OutBuf = AppendValue(conn.OutBuf, res)
+		case CmdSet:
+			if len(args) == 3 && isSimpleSession && eng.AOF == nil && eng.Replication == nil && eng.MaxMemory == 0 && eng.WatchedCount() == 0 {
+				eng.Keyspace.SetString(args[1], args[2])
+				conn.OutBuf = append(conn.OutBuf, respOK...)
+				w.incOps(eng)
+				return
+			}
+		case CmdDel:
+			if len(args) == 2 && isSimpleSession && eng.AOF == nil && eng.Replication == nil && eng.WatchedCount() == 0 {
+				n := eng.Keyspace.Delete(args[1])
+				if n > 0 {
+					conn.OutBuf = append(conn.OutBuf, respOne...)
+				} else {
+					conn.OutBuf = append(conn.OutBuf, respZero...)
+				}
+				w.incOps(eng)
+				return
+			}
 		}
-		w.incOps(eng)
-		return
+
+	case 4:
+		switch AsCmd4(args[0]) {
+		case CmdPing:
+			if len(args) == 1 {
+				conn.OutBuf = append(conn.OutBuf, respPONG...)
+				w.incOps(eng)
+				return
+			} else if len(args) == 2 {
+				conn.OutBuf = AppendBulkString(conn.OutBuf, args[1])
+				w.incOps(eng)
+				return
+			}
+		case CmdIncr:
+			if len(args) == 2 && isSimpleSession && eng.AOF == nil && eng.Replication == nil && eng.MaxMemory == 0 && eng.WatchedCount() == 0 {
+				val, err := eng.Keyspace.IncrBy(args[1], 1)
+				if err == nil {
+					conn.OutBuf = append(conn.OutBuf, ':')
+					conn.OutBuf = strconv.AppendInt(conn.OutBuf, val, 10)
+					conn.OutBuf = append(conn.OutBuf, '\r', '\n')
+					w.incOps(eng)
+					return
+				}
+			}
+		case CmdDecr:
+			if len(args) == 2 && isSimpleSession && eng.AOF == nil && eng.Replication == nil && eng.MaxMemory == 0 && eng.WatchedCount() == 0 {
+				val, err := eng.Keyspace.IncrBy(args[1], -1)
+				if err == nil {
+					conn.OutBuf = append(conn.OutBuf, ':')
+					conn.OutBuf = strconv.AppendInt(conn.OutBuf, val, 10)
+					conn.OutBuf = append(conn.OutBuf, '\r', '\n')
+					w.incOps(eng)
+					return
+				}
+			}
+		case CmdQuit:
+			conn.OutBuf = append(conn.OutBuf, respOK...)
+			w.flushWrite(conn)
+			w.closeConn(conn)
+			return
+		}
 	}
 
-	// Fast-path: SET key val (without extra flags, when AOF/repl inactive, no memory limit, no active watches)
-	if len(args) == 3 && (args[0] == "SET" || args[0] == "set") && isSimpleSession && eng.AOF == nil && eng.Replication == nil && eng.MaxMemory == 0 && eng.WatchedCount() == 0 {
-		eng.Keyspace.Set(args[1], &engine.Entry{Type: engine.TypeString, Value: args[2]})
-		conn.OutBuf = append(conn.OutBuf, respOK...)
-		w.incOps(eng)
-		return
-	}
-
-	cmdUpper := engine.ToUpperFast(args[0])
-	if cmdUpper == "QUIT" {
-		conn.OutBuf = append(conn.OutBuf, respOK...)
-		w.flushWrite(conn)
-		w.closeConn(conn)
-		return
-	}
-
-	// Execute against multi-core sharded keyspace
+	// Fallback to full engine execution
 	res := eng.ExecuteCommandWithSession(conn.Session, conn.ID, args)
 	conn.OutBuf = AppendValue(conn.OutBuf, res)
 	w.incOps(eng)
@@ -473,21 +509,33 @@ func (w *EpollWorker) handleRead(conn *Connection) {
 }
 
 func (w *EpollWorker) flushWrite(conn *Connection) {
-	total := len(conn.OutBuf)
-	written := 0
-	for written < total {
-		n, err := syscall.Write(conn.Fd, conn.OutBuf[written:])
+	buf := conn.OutBuf
+	for len(buf) > 0 {
+		n, err := syscall.Write(conn.Fd, buf)
 		if err != nil {
 			if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
-				time.Sleep(10 * time.Microsecond)
-				continue
+				for retry := 0; retry < 50; retry++ {
+					n, err = syscall.Write(conn.Fd, buf)
+					if err == nil {
+						buf = buf[n:]
+						break
+					}
+					if err != syscall.EAGAIN && err != syscall.EWOULDBLOCK {
+						w.closeConn(conn)
+						return
+					}
+				}
+				if len(buf) == 0 {
+					break
+				}
+				copy(conn.OutBuf, buf)
+				conn.OutBuf = conn.OutBuf[:len(buf)]
+				return
 			}
 			w.closeConn(conn)
 			return
 		}
-		if n > 0 {
-			written += n
-		}
+		buf = buf[n:]
 	}
 	conn.OutBuf = conn.OutBuf[:0]
 }
@@ -523,6 +571,9 @@ func (s *EpollServer) Stop() error {
 	for _, w := range s.workers {
 		if w != nil {
 			close(w.stopChan)
+			if w.listenerFd > 0 && w.listenerFd != s.listenerFd {
+				_ = syscall.Close(w.listenerFd)
+			}
 			var connsToClose []*Connection
 			w.muConns.Lock()
 			for _, c := range w.conns {
