@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -165,7 +166,8 @@ func (s *KqueueServer) Start() error {
 
 func (w *KqueueWorker) run(wg *sync.WaitGroup) {
 	defer wg.Done()
-	// Let Go runtime M:N scheduler manage goroutines without forcing OS thread context switches
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 
 	events := make([]syscall.Kevent_t, 512)
 	timeout := &syscall.Timespec{Sec: 0, Nsec: 1_000_000} // 1ms batching timeout
