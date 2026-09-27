@@ -51,7 +51,7 @@
 ```
 
 ### 1. Breaking the Global Mutex Bottleneck
-Standard Redis processes all commands through a single thread to avoid concurrency issues, limiting throughput to a single CPU core. VortexKV pairs a **hardware-accelerated Multi-Reactor engine (kqueue/epoll)** with `SO_REUSEPORT` kernel socket load balancing, single-cycle 32-bit integer dispatch, in-place zero-allocation keyspace updates, and **256 independent cacheline-padded lock-striped shards**, allowing high-concurrency workloads to utilize all CPU cores simultaneously and batch pipelined responses into consolidated kernel writes (**6.87M+ ops/sec** peak pipelined ceiling, **4.10M ops/sec** standard 50-client run, **3.08M ops/sec** GET).
+Standard Redis processes all commands through a single thread to avoid concurrency issues, limiting throughput to a single CPU core. VortexKV pairs a **hardware-accelerated Multi-Reactor engine (kqueue/epoll)** with `SO_REUSEPORT` kernel socket load balancing, single-cycle 32-bit integer dispatch, in-place zero-allocation keyspace updates, and **256 independent cacheline-padded lock-striped shards**, allowing high-concurrency workloads to utilize all CPU cores simultaneously and batch pipelined responses into consolidated kernel writes (**14.28M+ ops/sec** peak pipelined ceiling, **10.0M ops/sec** GET P=64, **2.94M ops/sec** SET P=128).
 
 ### 2. Dedicated Non-Conflicting Ports
 VortexKV is engineered for seamless coexistence with existing database infrastructure:

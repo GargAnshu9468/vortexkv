@@ -75,7 +75,7 @@ This model is elegant for microservices. But at **500,000+ commands per second**
 3. **Write Syscall Amplification**: Writing each small Redis response (e.g. `+OK\r\n` or `+PONG\r\n`) incurs an independent kernel write syscall. Syscalls are expensive.
 4. **Listener Bottleneck**: A single `Accept()` loop serializes all incoming connection handshakes, causing socket listen backlog drops under burst traffic.
 
-To hit 6.8M+ ops/sec, we had to rethink the networking engine from the metal up.
+To hit 14.2M+ ops/sec, we had to rethink the networking engine from the metal up.
 
 ---
 
@@ -153,7 +153,7 @@ func (c *Client) QueueResponse(resp []byte) {
 }
 ```
 
-When processing pipelined workloads, **up to 128 responses are consolidated into a single kernel `writev` / `send` syscall**. This single optimization boosted pipelined throughput from 1.8M ops/sec to over **6.87M ops/sec**!
+When processing pipelined workloads, **up to 128 responses are consolidated into a single kernel `writev` / `send` syscall**. This single optimization boosted pipelined throughput from 1.8M ops/sec to over **14.28M ops/sec**!
 
 ---
 
