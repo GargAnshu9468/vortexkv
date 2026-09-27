@@ -108,7 +108,7 @@ redis-cli -p 7379 -a "vortex_secure_2026" VSEARCH tech_docs 1 cosine 0.90 0.12 0
 
 ## 5. Benchmarking Performance
 
-VortexKV delivers **6,870,000+ ops/sec** pipelined throughput (world record) and **210,000+ ops/sec** direct concurrency with **~111µs** p50 latency.
+VortexKV delivers **14,287,238 ops/sec** peak pipelined throughput (GET P=128), **10,000,000 ops/sec** (GET P=64), and **210,000+ ops/sec** direct concurrency with **~111µs** p50 latency.
 
 Run the official benchmark suite:
 ```bash

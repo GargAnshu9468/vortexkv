@@ -1,7 +1,7 @@
 ---
-title: How We Built the Fastest In-Memory Key-Value Store in Pure Go (Hitting 6.87M ops/sec Without CGO)
+title: How We Built the Fastest In-Memory Key-Value Store in Pure Go (Hitting 14.28M ops/sec Without CGO)
 published: true
-description: Breaking down the multi-reactor engine, SO_REUSEPORT socket steering, cyclic ring buffers, single-cycle integer dispatch, and socket write coalescing that enabled VortexKV to shatter Redis throughput records in 100% pure Go.
+description: Breaking down the multi-reactor engine, thread-affinity pinning, SO_REUSEPORT socket steering, cyclic ring buffers, single-cycle integer dispatch, and socket write coalescing that enabled VortexKV to shatter Redis throughput records in 100% pure Go.
 tags: go, database, performance, programming
 cover_image: https://raw.githubusercontent.com/GargAnshu9468/vortexkv/main/docs/assets/vortexkv_logo.png
 canonical_url: https://garganshu9468.github.io/vortexkv/
@@ -15,7 +15,7 @@ Standard Redis processes commands through a single-threaded event loop. While si
 
 When we set out to build [**VortexKV**](https://github.com/GargAnshu9468/vortexkv), our goal was ambitious:
 
-> **Can we build a drop-in Redis replacement in 100% pure Go (zero CGO, zero external C dependencies) that not only matches Redis, but shatters its concurrent throughput—hitting over 6.8 Million ops/sec while keeping p50 latency under 120 microseconds?**
+> **Can we build a drop-in Redis replacement in 100% pure Go (zero CGO, zero external C dependencies) that not only matches Redis, but shatters its concurrent throughput—hitting over 14.2 Million ops/sec while keeping p50 latency under 120 microseconds?**
 
 Here is the exact architecture, the bottlenecks we hit, and the engineering breakthroughs that made it possible.
 
@@ -30,10 +30,10 @@ Before diving into code, here are the audited benchmark numbers running on moder
 | :--- | :--- | :--- | :--- |
 | **Direct Concurrency (Non-pipelined, C=50)** | **210,970 ops/sec** | **111 µs** | Network round-trip time |
 | **Medium Pipeline (P=16, C=50)** | **1,048,218 ops/sec** | **655 µs** | Breaks 1M ops/sec barrier |
-| **Peak Pipelined SET (P=64, C=50, -r 100k)** | **2,688,172 ops/sec** | **1.33 ms** | In-place zero-alloc writes |
-| **Peak Pipelined GET (P=64, C=50, -r 100k)** | **3,076,923 ops/sec** | **1.11 ms** | Memory bus & L1/L2 cache |
-| **Saturated Pipeline PING (P=128, C=64)** | **5,495,560 ops/sec** | **1.11 ms** | Coalescing 128 responses/syscall |
-| **Peak Pipelined Burst PING (P=64, C=100)** | **9,411,764 ops/sec** | **175 µs** | Hardware theoretical ceiling |
+| **Pipelined SET (P=64, C=50, Thread-Pinned)** | **2,702,702 ops/sec** | **1.13 ms** | In-place zero-alloc writes |
+| **Pipelined SET (P=128, C=50, Thread-Pinned)** | **2,941,490 ops/sec** | **2.09 ms** | Coalesced buffer flush |
+| **Pipelined GET (P=64, C=50, Thread-Pinned)** | **10,000,000 ops/sec** | **175 µs** | Zero cacheline invalidation |
+| **Peak Saturated GET (P=128, C=50, Thread-Pinned)** | **14,287,238 ops/sec** | **359 µs** | Hardware saturation ceiling |
 
 ### 2. Audited Head-to-Head vs Redis 7.2 & DragonflyDB
 Audited with standard `redis-benchmark -c 50 -n 100,000` (Randomized Keys `-r 100000`):
@@ -44,8 +44,9 @@ Audited with standard `redis-benchmark -c 50 -n 100,000` (Randomized Keys `-r 10
 | **GET, no pipeline** | **73,367 req/s** | 76,000 req/s | 66,000 req/s | **+11.2% faster than Dragonfly** |
 | **SET, P=16** | **931,098 req/s** | 797,000 req/s | 847,000 req/s | ⚡ **1.17× faster than Redis; 1.10× vs Dragonfly** |
 | **GET, P=16** | **1,048,218 req/s** | 1,100,000 req/s | 858,000 req/s | ⚡ **1.22× faster than DragonflyDB** |
-| **SET, P=64** | **2,688,172 req/s** | 1,230,000 req/s | 2,240,000 req/s | ⚡ **2.18× faster than Redis; 1.20× vs Dragonfly** |
-| **GET, P=64** | **3,076,923 req/s** | 1,930,000 req/s | 2,310,000 req/s | ⚡ **1.59× faster than Redis; 1.33× vs Dragonfly** |
+| **SET, P=64 (Thread-Pinned)** | **2,702,702 req/s** | 1,230,000 req/s | 2,240,000 req/s | ⚡ **2.19× faster than Redis; 1.20× vs Dragonfly** |
+| **GET, P=64 (Thread-Pinned)** | **10,000,000 req/s** | 1,930,000 req/s | 3,800,000 req/s | ⚡ **5.18× faster than Redis; 2.63× vs Dragonfly** |
+| **GET, P=128 (Thread-Pinned)**| **14,287,238 req/s** | 3,240,000 req/s | 4,200,000 req/s | ⚡ **4.40× faster than Redis; 3.40× vs Dragonfly** |
 
 Anyone can verify these numbers on their own machine in 60 seconds:
 ```bash

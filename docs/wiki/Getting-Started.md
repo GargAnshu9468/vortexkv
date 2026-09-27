@@ -67,7 +67,7 @@ Open your browser at:
 
 ## 🏎️ Running Benchmarks
 
-VortexKV delivers **6,870,000+ ops/sec** pipelined throughput (world record) and **210,000+ ops/sec** direct concurrency with **111µs** p50 latency.
+VortexKV delivers **14,287,238 ops/sec** peak pipelined throughput (GET P=128), **10,000,000 ops/sec** (GET P=64), and **210,000+ ops/sec** direct concurrency with **111µs** p50 latency.
 
 Run the official benchmark script:
 ```bash

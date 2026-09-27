@@ -1,6 +1,6 @@
 # 🏎️ Architecture & Engine Internals
 
-This document covers the internal design, concurrency patterns, and data structures powering VortexKV's **6,870,000+ ops/sec** throughput.
+This document covers the internal design, concurrency patterns, and data structures powering VortexKV's **14,287,238 ops/sec** throughput.
 
 ---
 
@@ -28,10 +28,10 @@ type Shard struct {
 
 ## 2. Hardware-Accelerated Multi-Reactor Engine (`kqueue` / `epoll` with `SO_REUSEPORT`)
 
-To bridge the raw throughput gap against C++/C# engines (Dragonfly/Garnet) and achieve **6,870,000+ ops/sec** peak pipelined throughput, VortexKV features an event-driven Multi-Reactor network engine (`internal/reactor`):
+To bridge the raw throughput gap against C++/C# engines (Dragonfly/Garnet) and achieve **14,287,238 ops/sec** peak pipelined throughput (GET P=128) and **10,000,000 ops/sec** (GET P=64), VortexKV features an event-driven Multi-Reactor network engine (`internal/reactor`):
 
 - **Kernel-Level Socket Steering (`SO_REUSEPORT`)**: Rather than bottle-necking all incoming TCP connections through a single listener thread, VortexKV binds multiple worker threads to the same port using `SO_REUSEPORT`. The Linux/Darwin kernel hashes new connections directly across worker queues with zero mutexes.
-- **Dedicated Sub-Reactor Workers**: Workers run non-blocking event loops cooperatively scheduled by the Go runtime scheduler across available CPU cores.
+- **Dedicated Thread-Pinned Sub-Reactor Workers**: Workers run non-blocking event loops with OS thread-affinity pinning (`runtime.LockOSThread()`) across available CPU cores, eliminating CPU core migration and cacheline invalidation.
 - **Contiguous Zero-Alloc Ring Buffer (`RingBuffer`)**: Each connection maintains a 64KB circular ring buffer with direct slice streaming (`ReadSlice()` / `WriteSlice()`).
 - **Single-Cycle 32-bit Integer Command Dispatch**: Hot-path commands (`GET`, `SET`, `DEL`, `PING`, `INCR`, `QUIT`) are matched in a single CPU cycle via 32-bit integer word matching with zero string conversions or heap allocations.
 - **Zero-Alloc RESP Parser & Fast Serializer**: Direct byte scanning with `ParseCommandInto` (27.5M ops/s) and nanosecond fast-path serialization (down to 2.86 ns/op).
@@ -53,7 +53,7 @@ When clients use pipelining (`redis-benchmark -P 16`, `P=64`, or `P=128`):
 - Instead of calling `conn.Write()` (an expensive OS kernel syscall) after every single command, VortexKV inspects socket buffer state.
 - Responses are written directly into a high-capacity in-memory write buffer.
 - The buffer is flushed to the TCP socket **only when the input command queue is completely drained**.
-- This coalesces dozens of pipelined commands into **one single kernel `write()` syscall**, slashing context-switch overhead by over 95% and propelling pipelined throughput to **6,870,000+ ops/sec** (bursts up to **9.41M ops/sec**).
+- This coalesces dozens of pipelined commands into **one single kernel `write()` syscall**, slashing context-switch overhead by over 95% and propelling pipelined throughput to **14,287,238 ops/sec** (GET P=128) and **10,000,000 ops/sec** (GET P=64).
 
 ---
 

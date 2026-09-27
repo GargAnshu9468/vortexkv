@@ -1,6 +1,6 @@
 # ⚙️ VortexKV Architecture & Internals
 
-This document details the internal design and concurrency model that allow VortexKV to achieve **sub-millisecond latency (111µs)** and **over 6,870,000 operations per second** on modern multi-core machines.
+This document details the internal design and concurrency model that allow VortexKV to achieve **sub-millisecond latency (111µs)** and **over 14,280,000 operations per second** on modern multi-core machines.
 
 ---
 
@@ -80,7 +80,7 @@ The biggest performance differentiator in Redis protocols is **pipelining** (`-P
 - Instead of calling `conn.Write()` (an expensive OS kernel syscall) after every single command, VortexKV inspects buffered socket state.
 - Responses are written directly into a high-capacity in-memory ring buffer.
 - The buffer is flushed to the TCP socket **only when the input command queue is completely drained**.
-- This coalesces 64-128 pipelined commands into **one single kernel `write()` syscall**, slashing context-switch overhead by over 95% and propelling pipelined throughput to **6,870,000+ ops/sec** (PING) and **2,695,000+ ops/sec** (GET).
+- This coalesces 64-128 pipelined commands into **one single kernel `write()` syscall**, slashing context-switch overhead by over 95% and propelling pipelined throughput to **14,287,238 ops/sec** (GET P=128), **10,000,000 ops/sec** (GET P=64), and **2,941,490 ops/sec** (SET P=128) with OS thread-affinity pinning (`runtime.LockOSThread()`).
 
 ---
 

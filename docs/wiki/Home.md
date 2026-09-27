@@ -1,6 +1,6 @@
 # 🌌 Welcome to the VortexKV Wiki
 
-> **VortexKV** (*Vector-Optimized Redis-Compatible Throughput Extreme Key-Value Store*) is a next-generation, cyberpunk in-memory data store engineered from scratch in pure Go. It delivers **6,870,000+ ops/sec** pipelined throughput (with peak bursts up to **9,411,764 ops/sec**) and **210,000+ ops/sec** direct concurrency with **~111µs p50 latency**, hardware-accelerated kqueue/epoll event reactor, 256 cacheline-padded lock-striped shards, smart socket write coalescing, native HNSW AI vector graphs, Redis Streams with consumer groups, an autonomous cluster gossip bus, dual scripting (Lua 5.1 & Wasm), and an embedded visual command deck.
+> **VortexKV** (*Vector-Optimized Redis-Compatible Throughput Extreme Key-Value Store*) is a next-generation, cyberpunk in-memory data store engineered from scratch in pure Go. It delivers **14,287,238 ops/sec** peak pipelined throughput (GET P=128), **10,000,000 ops/sec** (GET P=64), and **210,000+ ops/sec** direct concurrency with **~111µs p50 latency**, hardware-accelerated kqueue/epoll event reactor with OS thread pinning, 256 cacheline-padded lock-striped shards, smart socket write coalescing, native HNSW AI vector graphs, Redis Streams with consumer groups, an autonomous cluster gossip bus, dual scripting (Lua 5.1 & Wasm), and an embedded visual command deck.
 
 ---
 

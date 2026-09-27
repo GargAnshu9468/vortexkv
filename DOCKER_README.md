@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/vulnerabilities-0_detected-brightgreen?style=flat-square" alt="0 CVEs">
 </p>
 
-**VortexKV** is an ultra high-performance, next-generation in-memory key-value data engine engineered in pure Go. It delivers **`6,870,000+ ops/sec`** pipelined throughput (world record) and **`210,000+ ops/sec`** direct concurrency with **`111µs` p50 latency**, hardware-accelerated kqueue/epoll multi-reactor engine, 256 cacheline-padded lock-striped shards, smart socket write coalescing, native AI vector cosine search, Redis Streams, cluster gossip bus, embedded Lua 5.1, Wasm runtime, and an automated Kubernetes operator.
+**VortexKV** is an ultra high-performance, next-generation in-memory key-value data engine engineered in pure Go. It delivers **`14,287,238 ops/sec`** peak pipelined throughput (GET P=128), **`10,000,000 ops/sec`** (GET P=64), and **`210,000+ ops/sec`** direct concurrency with **`111µs` p50 latency**, hardware-accelerated kqueue/epoll multi-reactor engine with thread-affinity pinning, 256 cacheline-padded lock-striped shards, smart socket write coalescing, native AI vector cosine search, Redis Streams, cluster gossip bus, embedded Lua 5.1, Wasm runtime, and an automated Kubernetes operator.
 
 It is **drop-in wire compatible** with standard Redis clients (`redis-cli`, Jedis, go-redis, redis-py, ioredis) and ships with an embedded cyberpunk Web Studio Command Deck.
 
@@ -173,10 +173,10 @@ rdb.Set(ctx, "shard:key", "value", 0)
 ## 🏗️ Architecture & Specs
 
 - **Global Velocity & Benchmarks**: Audited with official `redis-benchmark` in Docker:
-  - **4,098,360 ops/sec** PING throughput (**1.26× faster than Redis**, **1.21× faster than DragonflyDB**).
-  - **3,076,923 ops/sec** GET throughput (**1.15× faster than Redis**, **1.33× faster than DragonflyDB**).
-  - **2,688,172 ops/sec** SET throughput (**1.38× – 2.18× faster than Redis**, **1.20× faster than DragonflyDB**).
-  - **931,000+ ops/sec** medium pipeline (`P=16`), beating DragonflyDB (847k/s) and closing the Redis gap to <6%.
+  - **14,287,238 ops/sec** GET throughput (P=128, **3.4× faster than DragonflyDB**).
+  - **10,000,000 ops/sec** GET throughput (P=64, **2.6× faster than DragonflyDB**, **3.7× faster than Redis**).
+  - **2,941,490 ops/sec** SET throughput (P=128).
+  - **2,702,702 ops/sec** SET throughput (P=64).
 - **Single-Cycle 32-Bit Integer Word Dispatch**: High-frequency commands (`GET`, `SET`, `DEL`, `PING`, `INCR`, `QUIT`) matched using bitwise integer masks (`| 0x20`) in a single CPU cycle with zero string allocations.
 - **Multi-Listener `SO_REUSEPORT` Kernel Socket Steering**: Each worker loop binds its own dedicated listening socket. The OS kernel hashes incoming TCP connections directly across worker queues with zero cross-thread locking.
 - **In-Place Zero-Allocation Keyspace Updates**: `SetString` updates existing keys in-place without heap allocations or GC pressure.

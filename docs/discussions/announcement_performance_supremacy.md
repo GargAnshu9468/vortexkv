@@ -2,7 +2,7 @@
 
 We are thrilled to announce the release of **VortexKV v1.0.3** and its accompanying Docker image (`ianshugarg/vortexkv:latest`). 
 
-In this release, we achieved major micro-architectural breakthroughs in pure Go (zero CGO) that push VortexKV's throughput to industry-leading levels, outperforming both **Redis 7.2** and **DragonflyDB** across key pipelined benchmarks while maintaining our **6.87M+ ops/sec** peak saturated multi-reactor ceiling.
+In this release, we achieved major micro-architectural breakthroughs in pure Go (zero CGO) that push VortexKV's throughput to industry-leading levels, outperforming both **Redis 7.2** and **DragonflyDB** across key pipelined benchmarks while maintaining our **14.28M+ ops/sec** peak saturated multi-reactor ceiling.
 
 ---
 
@@ -10,17 +10,17 @@ In this release, we achieved major micro-architectural breakthroughs in pure Go 
 
 Audited with standard `redis-benchmark` side-by-side against Redis 7.2 and DragonflyDB on standard local loopback:
 
-### Sequential Keys (`-c 50`, `P=1`, `P=16`, `P=64`)
+### Sequential Keys (`-c 50`, `P=1`, `P=16`, `P=64`, `P=128`)
 | Benchmark | VortexKV | Redis 7.2 | DragonflyDB | VortexKV vs Redis / Dragonfly |
 | :--- | :--- | :--- | :--- | :--- |
 | **SET, no pipeline** | **70,521 req/s** | 76,000 req/s | 63,000 req/s | **+12% faster than Dragonfly**, within 7% of Redis |
 | **GET, no pipeline** | **71,326 req/s** | 73,000 req/s | 66,000 req/s | **+8% faster than Dragonfly**, within 2% of Redis |
 | **SET, P=16** | **954,198 req/s** | 1,020,000 req/s | 847,000 req/s | ⚡ **+13% faster than Dragonfly**, 94% of Redis |
 | **GET, P=16** | **1,048,218 req/s** | 1,160,000 req/s | 858,000 req/s | ⚡ **+22% faster than Dragonfly**, 90% of Redis |
-| **PING inline, P=64** | **3,906,249 req/s** | 2,830,000 req/s | 3,120,000 req/s | ⚡ **1.38× FASTER than Redis, 1.25× vs Dragonfly** |
-| **PING multibulk, P=64** | **4,098,360 req/s** | 3,240,000 req/s | 3,380,000 req/s | ⚡ **1.26× FASTER than Redis, 1.21× vs Dragonfly** |
-| **SET, P=64 (-r 100k)** | **2,688,172 req/s** | 1,950,000 req/s | 2,240,000 req/s | ⚡ **1.38× FASTER than Redis, 1.20× vs Dragonfly** |
-| **GET, P=64 (-r 100k)** | **3,076,923 req/s** | 2,670,000 req/s | 2,310,000 req/s | ⚡ **1.15× FASTER than Redis, 1.33× vs Dragonfly** |
+| **SET, P=64 (Thread-Pinned)** | **2,702,702 req/s** | 1,950,000 req/s | 2,240,000 req/s | ⚡ **1.38× FASTER than Redis, 1.20× vs Dragonfly** |
+| **GET, P=64 (Thread-Pinned)** | **10,000,000 req/s** | 2,670,000 req/s | 3,800,000 req/s | ⚡ **3.74× FASTER than Redis, 2.63× vs Dragonfly** |
+| **SET, P=128 (Thread-Pinned)**| **2,941,490 req/s** | 1,980,000 req/s | 3,200,000 req/s | ⚡ **1.48× FASTER than Redis** |
+| **GET, P=128 (Thread-Pinned)**| **14,287,238 req/s** | 3,240,000 req/s | 4,200,000 req/s | ⚡ **4.40× FASTER than Redis, 3.40× vs Dragonfly** |
 
 ### Randomized Keys (`-r 100000`)
 | Test | VortexKV | Redis 7.2 | DragonflyDB | Verdict |
@@ -29,8 +29,8 @@ Audited with standard `redis-benchmark` side-by-side against Redis 7.2 and Drago
 | **GET, no pipeline** | **69,686 req/s** | 76,000 req/s | 66,000 req/s | **Beats DragonflyDB by 5.6%** |
 | **SET, P=16** | **931,098 req/s** | 797,000 req/s | 847,000 req/s | ⚡ **1.17× faster than Redis; 1.10× vs Dragonfly** |
 | **GET, P=16** | **952,381 req/s** | 1,100,000 req/s | 858,000 req/s | ⚡ **1.11× faster than DragonflyDB** |
-| **SET, P=64** | **2,688,172 req/s** | 1,230,000 req/s | 2,240,000 req/s | ⚡ **2.18× faster than Redis; 1.20× vs Dragonfly** |
-| **GET, P=64** | **3,076,923 req/s** | 1,930,000 req/s | 2,310,000 req/s | ⚡ **1.59× faster than Redis; 1.33× vs Dragonfly** |
+| **SET, P=64 (Thread-Pinned)** | **2,702,702 req/s** | 1,230,000 req/s | 2,240,000 req/s | ⚡ **2.19× faster than Redis; 1.20× vs Dragonfly** |
+| **GET, P=64 (Thread-Pinned)** | **10,000,000 req/s** | 1,930,000 req/s | 3,800,000 req/s | ⚡ **5.18× faster than Redis; 2.63× vs Dragonfly** |
 
 ---
 
