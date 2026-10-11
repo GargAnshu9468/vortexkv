@@ -1,7 +1,7 @@
 # ==============================================================================
 # VortexKV Production Multi-Stage Dockerfile
 # ==============================================================================
-FROM golang:1.25-alpine AS builder
+FROM golang:alpine AS builder
 
 WORKDIR /build
 
@@ -18,8 +18,15 @@ ARG VERSION=1.0.2
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -ldflags="-s -w" -o vortex-server ./cmd/vortex-server
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -ldflags="-s -w" -o vortex-cli ./cmd/vortex-cli
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build \
+    -trimpath \
+    -ldflags="-s -w -X main.Version=${VERSION} -X main.GitCommit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
+    -o vortex-server ./cmd/vortex-server
+
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build \
+    -trimpath \
+    -ldflags="-s -w -X main.Version=${VERSION} -X main.GitCommit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
+    -o vortex-cli ./cmd/vortex-cli
 
 # ==============================================================================
 # Final Minimal Distroless Runtime Image (Zero CVEs: 0C 0H 0M 0L)
