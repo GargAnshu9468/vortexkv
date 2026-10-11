@@ -14,6 +14,12 @@ import (
 	"github.com/GargAnshu9468/vortexkv/internal/resp"
 )
 
+var (
+	Version   = "1.0.4"
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+)
+
 func main() {
 	showVer := flag.Bool("v", false, "Print vortex-cli version and exit")
 	showVerLong := flag.Bool("version", false, "Print vortex-cli version and exit")
@@ -25,7 +31,7 @@ func main() {
 	flag.Parse()
 
 	if *showVer || *showVerLong {
-		fmt.Println("vortex-cli v1.0.1")
+		fmt.Printf("vortex-cli v%s\n", Version)
 		os.Exit(0)
 	}
 

@@ -19,7 +19,13 @@ import (
 	"github.com/GargAnshu9468/vortexkv/internal/web"
 )
 
-const banner = `
+var (
+	Version   = "1.0.4"
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+)
+
+const bannerHeader = `
 \033[38;2;0;243;255m  ██╗   ██╗ ██████╗ ██████╗ ████████╗███████╗██╗  ██╗    ██╗  ██╗██╗   ██╗
   ██║   ██║██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝    ██║ ██╔╝██║   ██║
   ██║   ██║██║   ██║██████╔╝   ██║   █████╗   ╚███╔╝     █████╔╝ ██║   ██║
@@ -27,7 +33,6 @@ const banner = `
    ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗    ██║  ██╗ ╚████╔╝ 
     ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝    ╚═╝  ╚═╝  ╚═══╝  \033[0m
   \033[38;2;138;43;226m» Next-Generation Hyper-Performance In-Memory Data Store & Studio «\033[0m
-  \033[38;2;57;255;20mVersion: 1.0.2  |  Protocol: RESP2/RESP3  |  Engine: Multi-Reactor Sharded\033[0m
 `
 
 func main() {
@@ -65,11 +70,12 @@ func main() {
 	flag.Parse()
 
 	if *showVer || *showVerShort {
-		fmt.Println("VortexKV v1.0.2")
+		fmt.Printf("VortexKV v%s\n", Version)
 		os.Exit(0)
 	}
 
-	fmt.Print(banner)
+	fmt.Print(bannerHeader)
+	fmt.Printf("  \033[38;2;57;255;20mVersion: %s  |  Protocol: RESP2/RESP3  |  Engine: Multi-Reactor Sharded\033[0m\n\n", Version)
 
 	fsyncPol := persistence.FsyncEverySec
 	switch *fsync {

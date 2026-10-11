@@ -11,7 +11,7 @@ import (
 	"github.com/GargAnshu9468/vortexkv/internal/operator"
 )
 
-const version = "1.0.2"
+const version = "1.0.4"
 
 func main() {
 	namespace := flag.String("namespace", "default", "Kubernetes namespace to watch")
