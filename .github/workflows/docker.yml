@@ -70,7 +70,6 @@ jobs:
             org.opencontainers.image.url=https://github.com/GargAnshu9468/vortexkv
             org.opencontainers.image.source=https://github.com/GargAnshu9468/vortexkv
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
             org.opencontainers.image.licenses=MIT
             org.opencontainers.image.documentation=https://github.com/GargAnshu9468/vortexkv/wiki
             com.docker.image.source.entrypoint=Dockerfile
@@ -80,7 +79,6 @@ jobs:
             org.opencontainers.image.url=https://github.com/GargAnshu9468/vortexkv
             org.opencontainers.image.source=https://github.com/GargAnshu9468/vortexkv
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
             org.opencontainers.image.licenses=MIT
             org.opencontainers.image.documentation=https://github.com/GargAnshu9468/vortexkv/wiki
             com.docker.image.source.entrypoint=Dockerfile
